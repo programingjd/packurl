@@ -26,10 +26,10 @@ body.decompressing::after{
 const query=document.location.search.slice(1);
 if(!query) document.location.href='new.html';
 else{
-const {dec85,enc85}=await import('./q85.mjs');
+const {dec85}=await import('./q85.mjs');
 const compressed=dec85(query);
 document.body.className='decompressing';
-const mod=await WebAssembly.compileStreaming(await fetch('brotli.wasm'));
+const mod=await WebAssembly.compileStreaming(await fetch('brotli_decompress.wasm'));
 const wasm=(await WebAssembly.instantiate(mod)).exports;
 const malloc=wasm.__wbindgen_malloc;
 const free=wasm.__wbindgen_free;
@@ -45,22 +45,10 @@ const decompress=data=>{
   free(ptr2,len2);
   return result;
 };
-const compress=data=>{
-  const len1=data.length;
-  const ptr1=malloc(len1);
-  new Uint8Array(wasm.memory.buffer).set(data,ptr1);
-  wasm.compress(8,ptr1,len1);
-  const arr=new Int32Array(wasm.memory.buffer);
-  const ptr2=arr[2];
-  const len2=arr[3];
-  const result=new Uint8Array(wasm.memory.buffer).subarray(ptr2,ptr2+len2).slice();
-  free(ptr2,len2);
-  return result;
-};
 const decompressed=decompress(compressed);
 console.log(new TextDecoder().decode(decompressed));
 document.body.className='';
-document.body.textContent=new TextDecoder().decode(decompressed);
+document.body.innerHTML=new TextDecoder().decode(decompressed);
 }
 </script>
 </body>
