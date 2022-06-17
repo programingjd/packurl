@@ -1,0 +1,5 @@
+Install rust (https://www.rust-lang.org/tools/install).
+
+Install wasm-pack (https://rustwasm.github.io/wasm-pack/installer/).
+
+Run `+wasm-pack build --target web+`.
