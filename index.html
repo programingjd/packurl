@@ -22,6 +22,7 @@ body.decompressing::after{
 }
 </style>
 <body class="extracting">
+<pre contenteditable="true"><a href="#">link</a></pre>
 <script type="module">
 const query=document.location.search.slice(1);
 if(!query) document.location.href='new.html';
@@ -48,7 +49,7 @@ const decompress=data=>{
 const decompressed=decompress(compressed);
 console.log(new TextDecoder().decode(decompressed));
 document.body.className='';
-document.body.innerHTML=new TextDecoder().decode(decompressed);
+//document.body.innerHTML=new TextDecoder().decode(decompressed);
 }
 </script>
 </body>
