@@ -3,10 +3,12 @@ import {EditorView,keymap,highlightActiveLineGutter} from 'https://jspm.dev/@cod
 import {history} from 'https://jspm.dev/@codemirror/commands';
 import {search,SearchQuery,setSearchQuery,getSearchQuery,findNext,findPrevious,selectMatches,openSearchPanel} from 'https://jspm.dev/@codemirror/search';
 import {lintGutter} from 'https://jspm.dev/@codemirror/lint';
-import {foldGutter,foldKeymap,codeFolding,bracketMatching} from 'https://jspm.dev/@codemirror/language';
+import {foldGutter,foldKeymap,codeFolding,bracketMatching,indentOnInput,defaultHighlightStyle,syntaxHighlighting} from 'https://jspm.dev/@codemirror/language';
 import {closeBrackets} from 'https://jspm.dev/@codemirror/autocomplete';
 import {indentWithTab,standardKeymap} from 'https://jspm.dev/@codemirror/commands';
-import {indentOnInput} from 'https://jspm.dev/@codemirror/language';
+import {html} from 'https://jspm.dev/@codemirror/lang-html';
+// import {languages} from 'https://jspm.dev/@codemirror/language-data';
+
 import {darcula} from "./darcula.js";
 
 const tabSize=new Compartment();
@@ -14,7 +16,9 @@ const lineWrapping=new Compartment();
 const bracketClosing=new Compartment();
 const baseTheme=EditorView.baseTheme(
   {
-    '.cm-content, .cm-gutter':{minHeight:'100%',font:'1em ccpl,serif',fontDisplay:'block'},
+    '.cm-content, .cm-gutter':{
+      minHeight:'100%',font:'1em ccpl,serif',fontVariantLigatures:'none',fontDisplay:'block'
+    },
     '.cm-scroller':{overflow:'auto'},
     '.cm-activeLineGutter':{fontWeight:'bold'},
   }
@@ -23,9 +27,10 @@ const baseTheme=EditorView.baseTheme(
 const extensions=[
   keymap.of([...standardKeymap,...foldKeymap,/*...commentKeymap,*/indentWithTab]),
   history(),
-  darcula,
   baseTheme,
+  darcula,
   tabSize.of(EditorState.tabSize.of(2)),
+  EditorState.allowMultipleSelections.of(true),
   lineWrapping.of(EditorView.lineWrapping),
   highlightActiveLineGutter(),
   codeFolding({placeholderText:'...'}),
@@ -34,6 +39,9 @@ const extensions=[
   bracketMatching(),
   bracketClosing.of(closeBrackets()),
   indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
+  html()
+  // markdown({codeLanguages:languages})
 ];
 const state=EditorState.create({extensions});
 
