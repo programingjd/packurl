@@ -10,13 +10,13 @@ If you include this software in a **commercial** product or anything that makes 
 
 If your product main feature derives directly from the functionality of this repository, then you need to acquire a
 license. **If you get significant revenue by monetizing a derivative of this work, a small portion should go back to this project**.
-The proper channel to start this process is to open a GitHub issue stating that you **require a commercial license**.
+The proper channel to start this process is to [open a GitHub issue](https://github.com/programingjd/packurl/issues) stating that you **require a commercial license**.
 
 You also need a **custom license** if you want to use a **modified version without disclosing the sources** of your changes.
 
 ---
 
-<a id="proper_attribution">Proper attribution</a>
+<a id="attribution">Proper attribution</a>
 
 Unless a custom or commercial license was obtained, proper attribution is required.
 
