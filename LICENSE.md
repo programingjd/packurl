@@ -16,7 +16,7 @@ You also need a **custom license** if you want to use a **modified version witho
 
 ---
 
-<a id="attribution">Proper attribution</a>
+<a id="attribution">***Proper attribution***</a>
 
 Unless a custom or commercial license was obtained, proper attribution is required.
 
