@@ -1,15 +1,15 @@
 
 **Free** use of this software is granted **for personal use** as long as you include [proper attribution](#attribution).
 
-If you have modified the original code, you should mention it and point to the source of the modifications.
+If you have modified the original code in any way, you should mention it and point to the source of the modifications. The sources for those modifications should be easily accessible anonymously (this rules out having to register for access or having to send a request for access over email or from a request form). An example of a proper way to make them available is to host them on a public repository on Github.
 
 
 If you include this software in a **commercial** product or anything that makes you money, either directly or indirectly,
-**you should help fund this project** by making an appropriate donation on GitHub (the amount is at your discretion).
+**you should help fund this project** (the amount is at your discretion).
 
 
-If your product main feature derives directly from the functionality of this repository, then you need to acquire a
-license. **If you get significant revenue by monetizing a derivative of this work, a small portion should go back to this project**.
+If your product main feature derives directly from the functionality of this software or a derivative, then you need to acquire a license.
+**If you get significant revenue by monetizing a derivative of this work, a small portion should go back to this project**.
 
 You also need a **custom license** if you want to use a **modified version without disclosing the sources** of your changes.
 
@@ -29,4 +29,4 @@ This attribution should be in a comment in the source file and in the `README` f
 
 ---
 
-***Copyright 2022 programingjd***
+***Copyright 2022 Jerome DAVID***
