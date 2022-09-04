@@ -1,5 +1,5 @@
 import {assertEquals} from "https://deno.land/std/testing/asserts.ts";
-import {dec85 as dec85_,enc85} from '../q85.mjs';
+import {dec85 as dec85_,enc85} from '../www/q85.mjs';
 const dec85=data=>new TextDecoder().decode(dec85_(data));
 
 

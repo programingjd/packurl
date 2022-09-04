@@ -27,7 +27,7 @@ body.decompressing::after{
 const query=document.location.search.slice(1);
 if(!query) document.location.href='new.html';
 else{
-const {dec85}=await import('./q85.mjs');
+const {dec85}=await import('www/q85.mjs');
 const compressed=dec85(query);
 document.body.className='decompressing';
 const mod=await WebAssembly.compileStreaming(await fetch('brotli_decompress.wasm'));

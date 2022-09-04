@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Packurl Setup</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+</head>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{width:100%;height:100%;background:#282828;color:#aaa;font:300 clamp(2.5vw, calc(1.5vw + 1vh), 32pt) monospace}
+body{min-height:100%;display:grid;place-content:center;padding:2em 2em 5em 2em;gap:clamp(2em,5vh,20vh)}
+section{max-width:clamp(5ch,70vw,47ch)}
+a{color:#75bfff}
+section q{font-style:italic}
+section.message.success em{color:#bee5b0}
+section.message.failure em{color:#c23b22}
+</style>
+<body>
+<section class="message"></section>
+<section class="message">
+  test
+</section>
+<script type="module">
+const [sec1,sec2]=document.querySelectorAll('section.message');
+if(!navigator.serviceWorker){
+  sec1.innerHTML='You were redirected to this page because <a href="about.html">Packurl</a> was not yet set up on your browser.';
+  sec2.classList.add('failure');
+  sec2.innerHTML='<em>The setup failed.</em> Maybe you are using an old browser or Firefox in private mode?';
+}else if(navigator.serviceWorker.controller){
+  sec1.innerHTML='You were redirected to this page because even though <a href="about.html">Packurl</a> is set up, it was bypassed.';
+  sec2.classList.add('failure');
+  sec2.innerHTML='This happens when the page is <q>hard&#8209;reloaded</q>. You can try to navigate to your url again.';
+}else{
+  sec1.innerHTML='You were redirected to this page because <a href="about.html">Packurl</a> was not yet set up on your browser.';
+  try{
+    const registration=await navigator.serviceWorker.register('service-worker.js',{type:'module',updateViaCache:'all'});
+    const worker=registration.installing||registration.waiting||registration.active;
+    if(worker.state==='activated'){
+      console.info('Service worker activated.');
+    }else{
+      worker.addEventListener('statechange',_=>{
+        if(worker.state==='activated') console.info('Service worker activated.');
+      });
+    }
+  }catch(err){
+    console.error(err);
+    sec2.classList.add('failure');
+    sec2.innerHTML=`<em>The setup failed.</em> Maybe there's something wrong on our end. Please try again later or file an <a href="https://github.com/programingjd/packurl/issues">issue</a>.`;
+  }
+}
+</script>
+</body>
+</html>
