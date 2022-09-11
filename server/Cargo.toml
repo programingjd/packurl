@@ -1,0 +1,20 @@
+[package]
+name = "packurl"
+version = "0.1.0"
+authors = ["Jerome David"]
+edition = "2021"
+
+[dependencies.futures]
+version = "0.3.21"
+
+[dependencies.smol]
+version = "1.2.5"
+
+[dependencies.smol-potat]
+version = "1.1.2"
+
+[dependencies.rustls]
+version = "0.20.6"
+
+[dependencies.rustls-acme]
+version = "0.5.0"
