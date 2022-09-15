@@ -12,7 +12,7 @@ async fn main() {
     let mut state = AcmeConfig::new(vec!["packurl.net", "www.packurl.net"])
         .contact(vec!["mailto:programingjd@gmail.com"])
         .cache_option(Some(DirCache::new(".")))
-        .directory_lets_encrypt(false)
+        .directory_lets_encrypt(true)
         .state();
     let rustls_config = ServerConfig::builder()
         .with_safe_default_cipher_suites()
