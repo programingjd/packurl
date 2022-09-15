@@ -59,7 +59,8 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
     }
 }
 
-const HELLO: &'static [u8] = br#"HTTP/1.1 200 OK
-Content-Length: 10
-Content-Type: text/plain; charset=utf-8
-Hello Tls!"#;
+const HELLO: &'static [u8] = b"HTTP/1.1 200 OK\r\n\
+Content-Length: 10\r\n\
+Content-Type: text/plain\r\n\
+\r\n\
+Hello Tls!";
