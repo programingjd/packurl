@@ -33,7 +33,7 @@ async fn main() {
     })
     .detach();
 
-    serve(acceptor, Arc::new(rustls_config), 8081).await;
+    serve(acceptor, Arc::new(rustls_config), 443).await;
 }
 
 async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u16) {
