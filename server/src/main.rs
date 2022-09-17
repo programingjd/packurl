@@ -106,7 +106,7 @@ Content-Type: text/html\r\n"
         vec
     };
     static ref MANIFEST_RESPONSE: Vec<u8> = {
-        let path = Path::new("./www/manifest.json");
+        let path = Path::new("./www/pwa.json");
         let size = path.metadata().unwrap().len() as usize;
         let mut file = fs::File::open(path).unwrap();
         let mut vec: Vec<u8> = Vec::new();

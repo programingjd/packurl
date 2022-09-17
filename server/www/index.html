@@ -4,7 +4,7 @@
 <title>Packurl</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="pwa.json">
 </head>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -22,10 +22,7 @@ if(!navigator||!navigator.serviceWorker){
   console.info('Service worker already installed.');
 }else{
   try{
-    const registration=navigator.serviceWorker.register(
-      'service-worker.js',
-      {type:'module',updateViaCache:'all'}
-    );
+    const registration=navigator.serviceWorker.register('sw.mjs',{type:'module',updateViaCache:'all'});
     console.info('Service worker registered.');
     const worker=registration.installing||registration.waiting||registration.active;
     if(worker.state==='activated'){

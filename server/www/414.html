@@ -4,7 +4,7 @@
 <title>Packurl Setup</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="pwa.json">
 </head>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -34,7 +34,7 @@ if(!navigator.serviceWorker){
 }else{
   sec1.innerHTML='You were redirected to this page because <a href="./">Packurl</a> was not yet set up on your browser.';
   try{
-    const registration=await navigator.serviceWorker.register('service-worker.js',{type:'module',updateViaCache:'all'});
+    const registration=await navigator.serviceWorker.register('sw.mjs',{type:'module',updateViaCache:'all'});
     const worker=registration.installing||registration.waiting||registration.active;
     if(worker.state==='activated'){
       console.info('Service worker activated.');
