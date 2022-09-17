@@ -18,3 +18,9 @@ version = "0.20.6"
 
 [dependencies.rustls-acme]
 version = "0.5.0"
+
+[dependencies.brotli]
+version = "3.3.4"
+
+[dependencies.lazy_static]
+version = "1.4.0"

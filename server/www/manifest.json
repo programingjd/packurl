@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "Packurl",
+  "short_name": "Packurl",
+  "start_url": ".",
+  "display": "browser",
+  "background_color": "#e6e5d3",
+  "theme_color": "#e6e5d3",
+  "description": "Packurl archiver",
+  "icons": [
+
+  ]
+}
