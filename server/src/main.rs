@@ -188,6 +188,26 @@ Content-Type: image/svg+xml\r\n"
         .unwrap();
         vec
     };
+    static ref TOUCHICON_RESPONSE: Vec<u8> = {
+        let path = Path::new("./www/apple.png");
+        let size = path.metadata().unwrap().len() as usize;
+        let mut file = fs::File::open(path).unwrap();
+        let mut vec: Vec<u8> = Vec::new();
+        vec.append(
+            &mut b"HTTP/1.1 200 OK\r\n\
+Cache-Control: no-cache\r\n\
+Connection: close\r\n\
+Content-Type: image/pngn\r\n"
+                .to_vec(),
+        );
+        vec.append(
+            &mut format!("Content-Length: {}\r\n\r\n", size)
+                .as_bytes()
+                .to_vec(),
+        );
+        file.read_to_end(&mut vec).unwrap();
+        vec
+    };
     static ref ROOT_RESPONSE: Vec<u8> = {
         let path = Path::new("./www/index.html");
         let size = path.metadata().unwrap().len() as usize;
@@ -290,6 +310,7 @@ const FAVICON_ICO_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.ico";
 const FAVICON_SVG_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.svg";
 const FAVICON_PNG_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.png";
 const FAVICON_MASKABLE_SVG_REQUEST_PREFIX: &[u8; 16] = b"GET /mask.svg HT";
+const TOUCHICON_REQUEST_PREFIX: &[u8; 16] = b"GET /apple.svg H";
 const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n\
 Allow: GET\r\n\
 Connection: close\r\n\
@@ -303,6 +324,7 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
     let favicon_png_response = &FAVICON_PNG_RESPONSE;
     let favicon_svg_response = &FAVICON_SVG_RESPONSE;
     let favicon_maskable_svg_response = &FAVICON_SVG_MASKABLE_RESPONSE;
+    let touchicon_response = &TOUCHICON_RESPONSE;
     let service_worker_response = &SERVICE_WORKER_RESPONSE;
     let manifest_response = &MANIFEST_RESPONSE;
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, port))
@@ -332,6 +354,9 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
                                 }
                                 FAVICON_MASKABLE_SVG_REQUEST_PREFIX => {
                                     let _ = tls.write_all(favicon_maskable_svg_response).await;
+                                }
+                                TOUCHICON_REQUEST_PREFIX => {
+                                    let _ = tls.write_all(touchicon_response).await;
                                 }
                                 SERVICE_WORKER_REQUEST_PREFIX => {
                                     let _ = tls.write_all(service_worker_response).await;
