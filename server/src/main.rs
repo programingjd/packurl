@@ -9,6 +9,7 @@ use rustls_acme::{AcmeAcceptor, AcmeConfig};
 use smol::net::TcpListener;
 use smol::spawn;
 use std::fs;
+use std::io::Read;
 use std::net::Ipv6Addr;
 use std::path::Path;
 use std::sync::Arc;
@@ -105,8 +106,59 @@ Content-Type: image/x-icon\r\n"
         .unwrap();
         vec
     };
+    static ref FAVICON_PNG_RESPONSE: Vec<u8> = {
+        let path = Path::new("./www/favicon.png");
+        let size = path.metadata().unwrap().len() as usize;
+        let mut file = fs::File::open(path).unwrap();
+        let mut vec: Vec<u8> = Vec::new();
+        vec.append(
+            &mut b"HTTP/1.1 200 OK\r\n\
+Cache-Control: no-cache\r\n\
+Connection: close\r\n\
+Content-Type: image/pngn\r\n"
+                .to_vec(),
+        );
+        vec.append(
+            &mut format!("Content-Length: {}\r\n\r\n", size)
+                .as_bytes()
+                .to_vec(),
+        );
+        file.read_to_end(&mut vec).unwrap();
+        vec
+    };
     static ref FAVICON_SVG_RESPONSE: Vec<u8> = {
         let path = Path::new("./www/favicon.svg");
+        let size = path.metadata().unwrap().len() as usize;
+        let mut file = fs::File::open(path).unwrap();
+        let mut vec: Vec<u8> = Vec::new();
+        vec.append(
+            &mut b"HTTP/1.1 200 OK\r\n\
+Cache-Control: no-cache\r\n\
+Connection: close\r\n\
+Content-Encoding: br\r\n\
+Content-Type: image/svg+xml\r\n"
+                .to_vec(),
+        );
+        vec.append(
+            &mut format!("Content-Length: {}\r\n\r\n", size)
+                .as_bytes()
+                .to_vec(),
+        );
+        BrotliCompress(
+            &mut file,
+            &mut vec,
+            &BrotliEncoderParams {
+                quality: 11,
+                size_hint: size,
+                mode: BROTLI_MODE_TEXT,
+                ..BrotliEncoderParams::default()
+            },
+        )
+        .unwrap();
+        vec
+    };
+    static ref FAVICON_SVG_MASKABLE_RESPONSE: Vec<u8> = {
+        let path = Path::new("./www/mask.svg");
         let size = path.metadata().unwrap().len() as usize;
         let mut file = fs::File::open(path).unwrap();
         let mut vec: Vec<u8> = Vec::new();
@@ -236,6 +288,8 @@ const SERVICE_WORKER_REQUEST_PREFIX: &[u8; 16] = b"GET /sw.mjs HTTP";
 const MANIFEST_REQUEST_PREFIX: &[u8; 16] = b"GET /pwa.json HT";
 const FAVICON_ICO_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.ico";
 const FAVICON_SVG_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.svg";
+const FAVICON_PNG_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.png";
+const FAVICON_MASKABLE_SVG_REQUEST_PREFIX: &[u8; 16] = b"GET /mask.svg HT";
 const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n\
 Allow: GET\r\n\
 Connection: close\r\n\
@@ -246,7 +300,9 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
     let content_too_large_response = &CONTENT_TOO_LARGE_RESPONSE;
     let root_response = &ROOT_RESPONSE;
     let favicon_ico_response = &FAVICON_ICO_RESPONSE;
+    let favicon_png_response = &FAVICON_PNG_RESPONSE;
     let favicon_svg_response = &FAVICON_SVG_RESPONSE;
+    let favicon_maskable_svg_response = &FAVICON_SVG_MASKABLE_RESPONSE;
     let service_worker_response = &SERVICE_WORKER_RESPONSE;
     let manifest_response = &MANIFEST_RESPONSE;
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, port))
@@ -268,8 +324,14 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
                                 FAVICON_ICO_REQUEST_PREFIX => {
                                     let _ = tls.write_all(favicon_ico_response).await;
                                 }
+                                FAVICON_PNG_REQUEST_PREFIX => {
+                                    let _ = tls.write_all(favicon_png_response).await;
+                                }
                                 FAVICON_SVG_REQUEST_PREFIX => {
                                     let _ = tls.write_all(favicon_svg_response).await;
+                                }
+                                FAVICON_MASKABLE_SVG_REQUEST_PREFIX => {
+                                    let _ = tls.write_all(favicon_maskable_svg_response).await;
                                 }
                                 SERVICE_WORKER_REQUEST_PREFIX => {
                                     let _ = tls.write_all(service_worker_response).await;
