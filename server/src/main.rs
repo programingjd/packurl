@@ -1,4 +1,4 @@
-use brotli::enc::backward_references::BrotliEncoderMode::BROTLI_MODE_TEXT;
+use brotli::enc::backward_references::BrotliEncoderMode::{BROTLI_MODE_GENERIC, BROTLI_MODE_TEXT};
 use brotli::enc::BrotliEncoderParams;
 use brotli::BrotliCompress;
 use futures::{AsyncReadExt, AsyncWriteExt, StreamExt};
@@ -68,6 +68,37 @@ Content-Type: text/html\r\n"
                 quality: 11,
                 size_hint: size,
                 mode: BROTLI_MODE_TEXT,
+                ..BrotliEncoderParams::default()
+            },
+        )
+        .unwrap();
+        vec
+    };
+    static ref FAVICON_RESPONSE: Vec<u8> = {
+        let path = Path::new("./www/favicon.ico");
+        let size = path.metadata().unwrap().len() as usize;
+        let mut file = fs::File::open(path).unwrap();
+        let mut vec: Vec<u8> = Vec::new();
+        vec.append(
+            &mut b"HTTP/1.1 200 OK\r\n\
+Cache-Control: no-cache\r\n\
+Connection: close\r\n\
+Content-Encoding: br\r\n\
+Content-Type: image/x-icon\r\n"
+                .to_vec(),
+        );
+        vec.append(
+            &mut format!("Content-Length: {}\r\n\r\n", size)
+                .as_bytes()
+                .to_vec(),
+        );
+        BrotliCompress(
+            &mut file,
+            &mut vec,
+            &BrotliEncoderParams {
+                quality: 11,
+                size_hint: size,
+                mode: BROTLI_MODE_GENERIC,
                 ..BrotliEncoderParams::default()
             },
         )
@@ -172,6 +203,7 @@ const GET_REQUEST_PREFIX: &[u8] = b"GET ";
 const ROOT_REQUEST_PREFIX: &[u8; 16] = b"GET / HTTP/1.1\r\n"; // 16 bytes long
 const SERVICE_WORKER_REQUEST_PREFIX: &[u8; 16] = b"GET /sw.mjs HTTP";
 const MANIFEST_REQUEST_PREFIX: &[u8; 16] = b"GET /pwa.json HT";
+const FAVICON_REQUEST_PREFIX: &[u8; 16] = b"GET /favicon.ico";
 const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n\
 Allow: GET\r\n\
 Connection: close\r\n\
@@ -181,6 +213,7 @@ Content-Length: 0\r\n
 async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u16) {
     let content_too_large_response = &CONTENT_TOO_LARGE_RESPONSE;
     let root_response = &ROOT_RESPONSE;
+    let favicon_response = &FAVICON_RESPONSE;
     let service_worker_response = &SERVICE_WORKER_RESPONSE;
     let manifest_response = &MANIFEST_RESPONSE;
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, port))
@@ -198,6 +231,9 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
                             match &buf {
                                 ROOT_REQUEST_PREFIX => {
                                     let _ = tls.write_all(root_response).await;
+                                }
+                                FAVICON_REQUEST_PREFIX => {
+                                    let _ = tls.write_all(favicon_response).await;
                                 }
                                 SERVICE_WORKER_REQUEST_PREFIX => {
                                     let _ = tls.write_all(service_worker_response).await;
