@@ -206,7 +206,7 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
                                     let _ = tls.write_all(manifest_response).await;
                                 }
                                 _ => {
-                                    if buf.starts_with(ROOT_REQUEST_PREFIX) {
+                                    if buf.starts_with(GET_REQUEST_PREFIX) {
                                         let _ = tls.write_all(content_too_large_response).await;
                                     } else {
                                         let _ = tls.write_all(METHOD_NOT_ALLOWED_RESPONSE).await;
