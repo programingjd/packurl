@@ -24,6 +24,7 @@ if(!navigator||!navigator.serviceWorker){
   try{
     const registration=navigator.serviceWorker.register('sw.mjs',{type:'module',updateViaCache:'all'});
     console.info('Service worker registered.');
+    console.log(registration);
     const worker=registration.installing||registration.waiting||registration.active;
     if(worker.state==='activated'){
       console.info('Service worker activated.');
