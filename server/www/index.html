@@ -32,8 +32,8 @@ if(!navigator||!navigator.serviceWorker){
         if(worker.state==='activated') console.info('Service worker activated.');
       });
     }
-  }catch(_){
-    console.warn('Failed to install service worker.');
+  }catch(err){
+    console.error('Failed to install service worker.',err);
   }
 }
 </script>
