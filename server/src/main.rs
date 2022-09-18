@@ -336,6 +336,9 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
             let accept = acceptor.accept(tcp);
             spawn(async move {
                 if let Ok(Some(handshake)) = accept.await {
+                    if let Some(sni) = handshake.client_hello().server_name() {
+                        println!("{}", sni);
+                    }
                     if let Ok(mut tls) = handshake.into_stream(rustls_config).await {
                         let mut buf = [0u8; 16];
                         if tls.read_exact(&mut buf).await.is_ok() {
