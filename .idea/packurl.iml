@@ -8,10 +8,12 @@
       <sourceFolder url="file://$MODULE_DIR$/rust/brotli_compress/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/brotli_decompress/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/server2/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/rust/brotli/target" />
       <excludeFolder url="file://$MODULE_DIR$/rust/brotli_compress/target" />
       <excludeFolder url="file://$MODULE_DIR$/rust/brotli_decompress/target" />
       <excludeFolder url="file://$MODULE_DIR$/server/target" />
+      <excludeFolder url="file://$MODULE_DIR$/server2/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
