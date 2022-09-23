@@ -47,6 +47,7 @@ impl ResolvesServerCert for CertResolver {
 
 #[smol_potat::main]
 async fn main() {
+    println!("Creating self signed certificate for localhost and cnd.packurl.net.");
     let self_signed = rcgen::generate_simple_self_signed(vec![
         "localhost".to_string(),
         "cdn.packurl.net".to_string(),
@@ -78,6 +79,7 @@ async fn main() {
 
     let acceptor = state.acceptor();
 
+    println!("Starting ACME certificate auto renewal service.");
     spawn(async move {
         loop {
             match state.next().await.unwrap() {
@@ -88,6 +90,7 @@ async fn main() {
     })
     .detach();
 
+    println!("Starting HTTP server.");
     serve(acceptor, Arc::new(rustls_config), 443).await;
 }
 
@@ -106,12 +109,16 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
         .unwrap();
     loop {
         if let Some(Ok(tcp)) = listener.incoming().next().await {
+            println!("Incoming tcp connection from {:?}", tcp.peer_addr());
             let rustls_config = rustls_config.clone();
             let accept = acceptor.accept(tcp);
             spawn(async move {
                 if let Ok(Some(handshake)) = accept.await {
+                    println!("Starting handshake.");
                     if let Ok(mut tls) = handshake.into_stream(rustls_config).await {
+                        println!("Handshake success.");
                         if let Some(sni) = tls.get_ref().1.sni_hostname() {
+                            println!("SNI: {}", sni);
                             match sni {
                                 "www.packurl.net" | "packurl.net" => {
                                     let mut buf = [0u8; 16];
@@ -164,8 +171,14 @@ async fn serve(acceptor: AcmeAcceptor, rustls_config: Arc<ServerConfig>, port: u
                                 _ => {}
                             }
                             let _ = tls.close().await;
+                        } else {
+                            println!("SNI is missing.");
                         }
+                    } else {
+                        println!("Handshake failure.");
                     }
+                } else {
+                    println!("Connection rejected.");
                 }
             })
             .detach();
