@@ -1,64 +1,146 @@
+mod acme;
+mod cache;
+mod domains;
+mod jose;
+mod log;
 mod resolver;
 mod response;
-use resolver::{CertResolver, APEX, CDN, WWW};
+mod tls;
+use crate::acme::Account;
+use crate::domains::{APEX, LOCALHOST, WWW};
+use crate::log::{LogLevel, LOG_LEVEL};
+use crate::tls::config;
+use colored::Colorize;
+use domains::CDN;
 use response::CDN_RESPONSE;
 use rustls::server::Acceptor;
-use rustls::version::TLS13;
-use std::io;
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Result};
 use std::net::Ipv6Addr;
-use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio_rustls::{LazyConfigAcceptor, TlsAcceptor};
+use tokio_rustls::LazyConfigAcceptor;
 
 const PORT: u16 = 443;
 
 #[tokio::main]
-async fn main() -> io::Result<()> {
-    let config = Arc::new(
-        rustls::ServerConfig::builder()
-            .with_safe_default_cipher_suites()
-            .with_safe_default_kx_groups()
-            .with_protocol_versions(&[&TLS13])
-            .map_err(|err| io::Error::new(io::ErrorKind::Unsupported, err))?
-            .with_no_client_auth()
-            .with_cert_resolver(Arc::new(CertResolver::try_new()?)),
-    );
-    //let acceptor = TlsAcceptor::from(Arc::new(config));
+async fn main() -> Result<()> {
+    match LOG_LEVEL {
+        LogLevel::Error => {}
+        _ => {
+            let _ = colored::control::set_override(true);
+        }
+    }
+    let acme_account = Account::init().await?;
+    acme_account.auto_renew().await?;
 
+    let config = config()?;
+
+    match LOG_LEVEL {
+        LogLevel::Info => {
+            println!("{}", "Starting HTTP1.1 server.");
+        }
+        _ => {}
+    }
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
+
+    println!("{}", "Listening on:".green());
+    println!("https://{}", APEX.blue().underline());
+    println!("https://{}", WWW.blue().underline());
+    println!("https://{}", CDN.blue().underline());
+    println!("https://{}", LOCALHOST.blue().underline());
     loop {
-        if let Ok((tcp, remote_addr)) = listener.accept().await {
-            let acceptor = LazyConfigAcceptor::new(
-                Acceptor::new().map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
-                tcp,
-            );
-            let config = config.clone();
-            let future = async move {
-                if let Ok(startHandshake) = acceptor.await {
-                    let client_hello = startHandshake.client_hello();
-                    if let Some(sni) = client_hello.server_name() {
-                        let server_name = sni.clone().to_string();
-                        if let Ok(mut stream) = startHandshake.into_stream(config).await {
-                            match server_name.as_str() {
-                                CDN => {
-                                    let _ = stream.write_all(CDN_RESPONSE).await;
-                                }
-                                APEX | WWW => {
-                                    let mut buf = [0; 16];
-                                    if stream.read_exact(&mut buf).await.is_ok() {}
-                                }
-                                _ => unreachable!(),
-                            }
-                            let _ = stream.shutdown().await;
-                        }
+        match listener.accept().await {
+            Ok((tcp, remote_addr)) => {
+                match LOG_LEVEL {
+                    LogLevel::Info => {
+                        println!(
+                            "Accepted TCP connection from {}.",
+                            format!("{}", remote_addr.ip()).purple()
+                        );
                     }
+                    _ => {}
                 }
-            };
-            tokio::spawn(async move {
-                let _ = future.await;
-            });
+                let acceptor = LazyConfigAcceptor::new(
+                    Acceptor::new().map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
+                    tcp,
+                );
+                let config = config.clone();
+                let future = async move {
+                    match acceptor.await {
+                        Ok(start_handshake) => {
+                            match LOG_LEVEL {
+                                LogLevel::Info => {
+                                    println!(
+                                        "Starting TLS handshake with {}.",
+                                        format!("{}", remote_addr.ip()).purple()
+                                    );
+                                }
+                                _ => {}
+                            }
+                            let client_hello = start_handshake.client_hello();
+                            match client_hello.server_name() {
+                                Some(sni) => {
+                                    match LOG_LEVEL {
+                                        LogLevel::Info => {
+                                            println!("TLS SNI extension: {}.", sni.purple())
+                                        }
+                                        _ => {}
+                                    };
+                                    let server_name = sni.clone().to_string();
+                                    match start_handshake.into_stream(config).await {
+                                        Ok(mut stream) => {
+                                            match server_name.as_str() {
+                                                CDN => {
+                                                    let _ = stream.write_all(CDN_RESPONSE).await;
+                                                }
+                                                _ => {
+                                                    let mut buf = [0; 16];
+                                                    if stream.read_exact(&mut buf).await.is_ok() {}
+                                                }
+                                            }
+                                            let _ = stream.shutdown().await;
+                                        }
+                                        Err(err) => {
+                                            match LOG_LEVEL {
+                                                LogLevel::Warning | LogLevel::Info => {
+                                                    println!("{}", "TLS handshake failed.".red());
+                                                    println!("{:?}", err);
+                                                }
+                                                _ => {}
+                                            };
+                                        }
+                                    }
+                                }
+                                None => {
+                                    match LOG_LEVEL {
+                                        LogLevel::Info => {
+                                            println!("{}", "TLS SNI extension is missing.".red())
+                                        }
+                                        _ => {}
+                                    };
+                                }
+                            }
+                        }
+                        Err(err) => match LOG_LEVEL {
+                            LogLevel::Info | LogLevel::Warning => {
+                                println!("{}", "Failed to accept TLS connection.".red());
+                                println!("{:?}", err)
+                            }
+                            _ => {}
+                        },
+                    }
+                };
+                tokio::spawn(async move {
+                    let _ = future.await;
+                });
+            }
+            Err(err) => match LOG_LEVEL {
+                LogLevel::Info | LogLevel::Warning => {
+                    println!("{}", "Failed to accept TCP connection.".red());
+                    println!("{:?}", err);
+                }
+                _ => {}
+            },
         }
     }
 }

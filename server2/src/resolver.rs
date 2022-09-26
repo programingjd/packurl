@@ -1,26 +1,31 @@
+use crate::cache::get_challenge_key;
+use crate::domains::{ACME_DOMAINS, SELF_SIGNED_DOMAINS};
+use crate::tls::ALPN_ACME_TLS;
+use crate::{LogLevel, LOG_LEVEL};
 use rcgen::generate_simple_self_signed;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::{any_supported_type, CertifiedKey};
 use rustls::{Certificate, PrivateKey};
+use std::cell::RefCell;
 use std::io::{Error, ErrorKind};
-use std::sync::Arc;
+use std::ops::Deref;
+use std::sync::{Arc, RwLock};
 
 pub struct CertResolver {
-    //acme: Arc<CertResolver>,
+    acme: RwLock<Option<Arc<CertifiedKey>>>,
     self_signed: Arc<CertifiedKey>,
 }
 
-pub const APEX: &'static str = "packurl.net";
-pub const WWW: &'static str = "www.packurl.net";
-pub const CDN: &'static str = "cdn.packurl.net";
-
 impl CertResolver {
     pub fn try_new() -> Result<Self, Error> {
-        let self_signed = generate_simple_self_signed(vec![
-            "localhost".to_string(),
-            "cdn.packurl.net".to_string(),
-        ])
-        .map_err(|err| Error::new(ErrorKind::Unsupported, err))?;
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("Creating self-signed certificates.");
+            }
+            _ => {}
+        }
+        let self_signed = generate_simple_self_signed(SELF_SIGNED_DOMAINS)
+            .map_err(|err| Error::new(ErrorKind::Unsupported, err))?;
         let private_key = PrivateKey(self_signed.serialize_private_key_der());
         let key = CertifiedKey {
             cert: vec![Certificate(
@@ -34,6 +39,7 @@ impl CertResolver {
             sct_list: None,
         };
         Ok(CertResolver {
+            acme: RwLock::new(None),
             self_signed: Arc::new(key),
         })
     }
@@ -42,10 +48,26 @@ impl CertResolver {
 impl ResolvesServerCert for CertResolver {
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         if let Some(sni) = client_hello.server_name() {
-            match sni {
-                CDN => Some(self.self_signed.clone()),
-                APEX | WWW => None,
-                _ => None,
+            if ACME_DOMAINS.find(sni).is_some() {
+                if client_hello
+                    .alpn()
+                    .and_then(|mut it| it.find(|&it| it == ALPN_ACME_TLS))
+                    .is_some()
+                {
+                    get_challenge_key().map(Arc::new)
+                } else {
+                    if let Some(inner) = self.acme.read().ok() {
+                        if let Some(inner) = inner.clone() {
+                            Some(inner.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+            } else {
+                Some(self.self_signed.clone())
             }
         } else {
             None

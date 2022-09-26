@@ -14,11 +14,31 @@ version = "0.23.4"
 [dependencies.rcgen]
 version = "0.9.3"
 
+[dependencies.ring]
+version = "0.16.20"
+
 [dependencies.rustls]
 version = "0.20.6"
+
+[dependencies.serde]
+version = "1.0.144"
+features = [ "derive" ]
+
+[dependencies.serde_json]
+version = "1.0.85"
+
+[dependencies.base64]
+version = "0.13.0"
+
+[dependencies.reqwest]
+version = "0.11.11"
+features = [ "json" ]
 
 [dependencies.brotli]
 version = "3.3.4"
 
 [dependencies.lazy_static]
 version = "1.4.0"
+
+[dependencies.colored]
+version = "2.0.0"
