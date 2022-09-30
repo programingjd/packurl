@@ -9,10 +9,10 @@ mod tls;
 use crate::acme::Account;
 use crate::domains::{APEX, LOCALHOST, WWW};
 use crate::log::{LogLevel, LOG_LEVEL};
-use crate::tls::config;
+use crate::tls::{config, ALPN_ACME_TLS};
 use colored::Colorize;
 use domains::CDN;
-use response::CDN_RESPONSE;
+use response::{CDN_RESPONSE, OK_RESPONSE};
 use rustls::server::Acceptor;
 use std::io::{Error, ErrorKind, Result};
 use std::net::Ipv6Addr;
@@ -82,32 +82,80 @@ async fn main() -> Result<()> {
                                 Some(sni) => {
                                     match LOG_LEVEL {
                                         LogLevel::Info => {
-                                            println!("TLS SNI extension: {}.", sni.purple())
+                                            println!(
+                                                "{}",
+                                                format!("TLS SNI extension: {}.", sni.purple())
+                                            )
                                         }
                                         _ => {}
                                     };
                                     let server_name = sni.clone().to_string();
-                                    match start_handshake.into_stream(config).await {
-                                        Ok(mut stream) => {
-                                            match server_name.as_str() {
-                                                CDN => {
-                                                    let _ = stream.write_all(CDN_RESPONSE).await;
-                                                }
-                                                _ => {
-                                                    let mut buf = [0; 16];
-                                                    if stream.read_exact(&mut buf).await.is_ok() {}
-                                                }
+                                    if client_hello
+                                        .alpn()
+                                        .and_then(|mut it| it.find(|&it| it == ALPN_ACME_TLS))
+                                        .is_some()
+                                    {
+                                        match LOG_LEVEL {
+                                            LogLevel::Info => {
+                                                println!(
+                                                    "{}",
+                                                    format!(
+                                                        "Responding to ACME Challenge for {}.",
+                                                        server_name.purple()
+                                                    )
+                                                )
                                             }
-                                            let _ = stream.shutdown().await;
+                                            _ => {}
+                                        };
+                                        match start_handshake.into_stream(config).await {
+                                            Ok(mut stream) => {
+                                                let _ = stream.write_all(OK_RESPONSE).await;
+                                                let _ = stream.shutdown().await;
+                                            }
+                                            Err(err) => {
+                                                match LOG_LEVEL {
+                                                    LogLevel::Warning | LogLevel::Info => {
+                                                        println!(
+                                                            "{}",
+                                                            "TLS handshake failed.".red()
+                                                        );
+                                                        println!("{:?}", err);
+                                                    }
+                                                    _ => {}
+                                                };
+                                            }
                                         }
-                                        Err(err) => {
-                                            match LOG_LEVEL {
-                                                LogLevel::Warning | LogLevel::Info => {
-                                                    println!("{}", "TLS handshake failed.".red());
-                                                    println!("{:?}", err);
+                                    } else {
+                                        match start_handshake.into_stream(config).await {
+                                            Ok(mut stream) => {
+                                                match server_name.as_str() {
+                                                    CDN => {
+                                                        let _ =
+                                                            stream.write_all(CDN_RESPONSE).await;
+                                                    }
+                                                    _ => {
+                                                        let mut buf = [0; 16];
+                                                        if stream.read_exact(&mut buf).await.is_ok()
+                                                        {
+                                                        }
+                                                        let _ = stream.write_all(OK_RESPONSE).await;
+                                                    }
                                                 }
-                                                _ => {}
-                                            };
+
+                                                let _ = stream.shutdown().await;
+                                            }
+                                            Err(err) => {
+                                                match LOG_LEVEL {
+                                                    LogLevel::Warning | LogLevel::Info => {
+                                                        println!(
+                                                            "{}",
+                                                            "TLS handshake failed.".red()
+                                                        );
+                                                        println!("{:?}", err);
+                                                    }
+                                                    _ => {}
+                                                };
+                                            }
                                         }
                                     }
                                 }

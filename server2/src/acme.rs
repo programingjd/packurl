@@ -82,7 +82,19 @@ impl Account {
     }
 
     pub async fn auto_renew(&self) -> Result<()> {
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Creating new ACME order.");
+            }
+            _ => {}
+        }
         let client = Client::new();
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Getting ACME directory.");
+            }
+            _ => {}
+        }
         let directory = client
             .get(DIRECTORY_URL)
             .send()
@@ -100,9 +112,24 @@ impl Account {
                 authorizations,
                 finalize,
             } => {
-                authorizations
-                    .iter()
-                    .map(|url| self.authorize(&client, &directory, url.as_str()));
+                match LOG_LEVEL {
+                    LogLevel::Info => {
+                        println!(
+                            "{}",
+                            format!("Order needs {} authorizations.", authorizations.len())
+                        );
+                    }
+                    _ => {}
+                }
+                for url in authorizations {
+                    match LOG_LEVEL {
+                        LogLevel::Info => {
+                            println!("{}", format!("Authorizing {}.", url));
+                        }
+                        _ => {}
+                    }
+                    self.authorize(&client, &directory, url.as_str()).await?;
+                }
             }
             _ => unreachable!(),
         }
@@ -145,7 +172,7 @@ impl Account {
         });
         let body = jose(
             keypair,
-            &payload,
+            Some(payload),
             None,
             nonce.as_str(),
             directory.new_account.as_str(),
@@ -179,16 +206,28 @@ impl Account {
         directory: &Directory,
         domains: Vec<String>,
     ) -> Result<Order> {
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Requesting new nonce.");
+            }
+            _ => {}
+        }
         let nonce = Self::new_nonce(client, directory).await?;
         let identifiers: Vec<Identifier> = domains.into_iter().map(Identifier::Dns).collect();
         let payload = json!({ "identifiers": identifiers });
         let body = jose(
             &self.keypair,
-            &payload,
+            Some(payload),
             Some(self.kid.as_str()),
             nonce.as_str(),
             directory.new_order.as_str(),
         )?;
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Calling new order directory endpoint.");
+            }
+            _ => {}
+        }
         let response = Self::jose_request(client, directory.new_order.as_str(), &body).await?;
         if response.status().is_success() {
             let order = response
@@ -208,15 +247,26 @@ impl Account {
     }
 
     async fn authorize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Requesting new nonce.");
+            }
+            _ => {}
+        }
         let nonce = Self::new_nonce(client, directory).await?;
-        let payload = json!("");
         let body = jose(
             &self.keypair,
-            &payload,
+            None,
             Some(self.kid.as_str()),
             nonce.as_str(),
             url,
         )?;
+        match LOG_LEVEL {
+            LogLevel::Info => {
+                println!("{}", "Calling authorization endpoint.");
+            }
+            _ => {}
+        }
         let response = Self::jose_request(client, url, &body).await?;
         if response.status().is_success() {
             match response
@@ -229,6 +279,15 @@ impl Account {
                     identifier,
                 } => {
                     let Identifier::Dns(domain) = identifier;
+                    match LOG_LEVEL {
+                        LogLevel::Info => {
+                            println!(
+                                "{}",
+                                format!("Selecting TlsAlpn01 challenge for domain {}.", &domain)
+                            );
+                        }
+                        _ => {}
+                    }
                     let challenge = challenges
                         .iter()
                         .find(|it| it.typ == ChallengeType::TlsAlpn01)
@@ -255,16 +314,29 @@ impl Account {
                             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
                     );
                     set_challenge_key(key);
+                    match LOG_LEVEL {
+                        LogLevel::Info => {
+                            println!("{}", "Requesting new nonce.");
+                        }
+                        _ => {}
+                    }
                     let nonce = Self::new_nonce(client, directory).await?;
                     let payload = json!({});
                     let body = jose(
                         &self.keypair,
-                        &payload,
+                        Some(payload),
                         Some(self.kid.as_str()),
                         nonce.as_str(),
                         challenge.url.as_str(),
                     )?;
-                    let response = Self::jose_request(client, url, &body).await?;
+                    let response =
+                        Self::jose_request(client, challenge.url.as_str(), &body).await?;
+                    match LOG_LEVEL {
+                        LogLevel::Info => {
+                            println!("{}", "Calling challenge trigger endpoint.");
+                        }
+                        _ => {}
+                    }
                     if response.status().is_success() {
                         Ok(())
                     } else {

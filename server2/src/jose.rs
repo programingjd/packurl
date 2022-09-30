@@ -8,7 +8,7 @@ use std::io::{Error, ErrorKind, Result};
 
 pub fn jose(
     keypair: &EcdsaKeyPair,
-    payload: &Value,
+    payload: Option<Value>,
     kid: Option<&str>,
     nonce: &str,
     url: &str,
@@ -36,7 +36,10 @@ pub fn jose(
         serde_json::to_vec(&protected).map_err(|err| Error::new(ErrorKind::InvalidData, err))?,
         URL_SAFE_NO_PAD,
     );
-    let payload = base64::encode_config(payload.to_string(), URL_SAFE_NO_PAD);
+    let payload = match payload {
+        Some(payload) => base64::encode_config(payload.to_string(), URL_SAFE_NO_PAD),
+        None => String::new(),
+    };
     let message = format!("{}.{}", protected, payload);
     let signature = keypair
         .sign(&SystemRandom::new(), message.as_bytes())
