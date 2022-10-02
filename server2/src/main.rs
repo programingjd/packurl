@@ -31,7 +31,8 @@ async fn main() -> Result<()> {
         }
     }
     let acme_account = Account::init().await?;
-    acme_account.auto_renew().await?;
+    tokio::spawn(async move { acme_account.auto_renew().await });
+    //acme_account.auto_renew().await?;
 
     let config = config()?;
 
