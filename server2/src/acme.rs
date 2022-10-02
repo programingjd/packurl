@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::{Error, ErrorKind, Result};
 use tokio::spawn;
+use tokio::time::{sleep, Duration};
 
 const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 const CONTACT: &'static str = "mailto:programingjd@gmail.com";
@@ -338,6 +339,54 @@ impl Account {
                         _ => {}
                     }
                     if response.status().is_success() {
+                        sleep(Duration::from_millis(5_000)).await;
+                        match LOG_LEVEL {
+                            LogLevel::Info => {
+                                println!("{}", "Requesting new nonce.");
+                            }
+                            _ => {}
+                        }
+                        let nonce = Self::new_nonce(client, directory).await?;
+                        let body = jose(
+                            &self.keypair,
+                            None,
+                            Some(self.kid.as_str()),
+                            nonce.as_str(),
+                            url,
+                        )?;
+                        match LOG_LEVEL {
+                            LogLevel::Info => {
+                                println!("{}", "Calling authorization endpoint.");
+                            }
+                            _ => {}
+                        }
+                        let response = Self::jose_request(client, url, &body).await?;
+                        if response.status().is_success() {
+                            match response
+                                .json()
+                                .await
+                                .map_err(|err| Error::new(ErrorKind::Other, err))?
+                            {
+                                Auth::Pending {
+                                    challenges,
+                                    identifier,
+                                } => {
+                                    println!("Still pending.");
+                                }
+                                Auth::Valid => {
+                                    println!("Valid !");
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            match LOG_LEVEL {
+                                LogLevel::Error => {}
+                                _ => {
+                                    Self::print_request_error(response).await;
+                                }
+                            }
+                            //Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
+                        }
                         Ok(())
                     } else {
                         match LOG_LEVEL {
