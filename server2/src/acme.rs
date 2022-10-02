@@ -378,7 +378,15 @@ impl Account {
                                 Auth::Valid => {
                                     println!("Valid !");
                                 }
-                                _ => {}
+                                Auth::Invalid => {
+                                    println!("Invalid !");
+                                }
+                                Auth::Expired => {
+                                    println!("Expired !");
+                                }
+                                Auth::Revoked => {
+                                    println!("Revoked !");
+                                }
                             }
                         } else {
                             match LOG_LEVEL {
