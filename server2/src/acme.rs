@@ -339,7 +339,9 @@ impl Account {
                         _ => {}
                     }
                     if response.status().is_success() {
+                        println!("{}", "Waiting 5 seconds before checking status again.");
                         sleep(Duration::from_millis(5_000)).await;
+                        println!("{}", format!("Checking status again for url {}.", url));
                         match LOG_LEVEL {
                             LogLevel::Info => {
                                 println!("{}", "Requesting new nonce.");
