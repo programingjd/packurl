@@ -32,11 +32,12 @@ pub async fn backup_account_kid(bytes: &[u8]) -> Result<()> {
 }
 pub fn set_challenge_key(domain: &str, key: CertifiedKey) {
     if let Some(map) = CHALLENGE_KEY.borrow_mut().as_mut() {
+        println!("Inserting into existing map.");
         map.insert(domain.to_string(), key);
     } else {
-        let mut map = HashMap::new();
+        println!("Inserting into new map.");
+        let mut map = CHALLENGE_KEY.borrow_mut().insert(HashMap::new());
         map.insert(domain.to_string(), key);
-        CHALLENGE_KEY.borrow_mut().insert(map);
         //*CHALLENGE_KEY.borrow_mut() = Some(map);
     }
     match get_challenge_key(domain) {
