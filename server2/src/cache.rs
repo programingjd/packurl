@@ -23,7 +23,8 @@ pub async fn backup_account_kid(bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 pub fn set_challenge_key(key: CertifiedKey) {
-    CHALLENGE_KEY.replace(Some(key));
+    *CHALLENGE_KEY.get_mut() = Some(key);
+    //CHALLENGE_KEY.replace(Some(key));
     if let Some(cert) = CHALLENGE_KEY.borrow().as_ref() {
         println!("ok");
     } else {

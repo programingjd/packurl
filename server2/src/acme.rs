@@ -64,8 +64,7 @@ impl Account {
                     }
                     _ => {}
                 }
-                String::from_utf8(bytes.to_vec())
-                    .map_err(|err| Error::new(ErrorKind::Other, err))?
+                String::from_utf8(bytes.clone()).map_err(|err| Error::new(ErrorKind::Other, err))?
             }
             None => {
                 match LOG_LEVEL {
