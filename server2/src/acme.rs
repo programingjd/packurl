@@ -314,6 +314,7 @@ impl Account {
                         any_ecdsa_type(&PrivateKey(certificate.serialize_private_key_der()))
                             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
                     );
+                    println!("Storing unsigned certificate for {}.", &domain.red());
                     set_challenge_key(key);
                     match LOG_LEVEL {
                         LogLevel::Info => {
