@@ -56,7 +56,7 @@ impl ResolvesServerCert for CertResolver {
                     .is_some()
                 {
                     println!("Looking for unsigned certificate for {}.", sni.red());
-                    if let Some(key) = get_challenge_key() {
+                    if let Some(key) = get_challenge_key(sni) {
                         println!("Certificate found.");
                         Some(Arc::new(key))
                     } else {

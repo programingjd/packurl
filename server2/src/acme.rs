@@ -314,8 +314,8 @@ impl Account {
                             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
                     );
                     println!("Storing unsigned certificate for {}.", &domain.red());
-                    set_challenge_key(key);
-                    if get_challenge_key().is_some() {
+                    set_challenge_key(domain.as_str(), key);
+                    if get_challenge_key(domain.as_str()).is_some() {
                         println!("Storage succeeded.");
                     } else {
                         println!("Storage failed.");
