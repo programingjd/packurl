@@ -2,6 +2,7 @@ use crate::cache::get_challenge_key;
 use crate::domains::{ACME_DOMAINS, SELF_SIGNED_DOMAINS};
 use crate::tls::ALPN_ACME_TLS;
 use crate::{LogLevel, LOG_LEVEL};
+use colored::Colorize;
 use rcgen::generate_simple_self_signed;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::{any_supported_type, CertifiedKey};
@@ -54,7 +55,7 @@ impl ResolvesServerCert for CertResolver {
                     .and_then(|mut it| it.find(|&it| it == ALPN_ACME_TLS))
                     .is_some()
                 {
-                    println!("Looking for unsigned certificate for {}.", sni.red);
+                    println!("Looking for unsigned certificate for {}.", sni.red());
                     if let Some(key) = get_challenge_key() {
                         println!("Certificate found.");
                         Some(Arc::new(key))
