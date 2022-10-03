@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::io::Result;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 const ACCOUNT_KEYS: RefCell<Option<Vec<u8>>> = RefCell::new(None);
@@ -36,9 +36,9 @@ pub fn set_challenge_key(domain: &str, key: CertifiedKey) {
         map.insert(domain.to_string(), key);
     } else {
         println!("Inserting into new map.");
-        let mut map = CHALLENGE_KEY.borrow_mut().insert(HashMap::new());
+        let mut map = HashMap::new();
         map.insert(domain.to_string(), key);
-        //*CHALLENGE_KEY.borrow_mut() = Some(map);
+        CHALLENGE_KEY.replace(Some(map));
     }
     match get_challenge_key(domain) {
         Some(_) => println!("ok"),
