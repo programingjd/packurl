@@ -36,7 +36,8 @@ pub fn set_challenge_key(domain: &str, key: CertifiedKey) {
     } else {
         let mut map = HashMap::new();
         map.insert(domain.to_string(), key);
-        *CHALLENGE_KEY.borrow_mut() = Some(map);
+        CHALLENGE_KEY.borrow_mut().insert(map);
+        //*CHALLENGE_KEY.borrow_mut() = Some(map);
     }
     match get_challenge_key(domain) {
         Some(_) => println!("ok"),
