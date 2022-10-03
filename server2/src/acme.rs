@@ -1,6 +1,6 @@
 use crate::cache::{
-    backup_account_keys, backup_account_kid, restore_account_keys, restore_account_kid,
-    set_challenge_key,
+    backup_account_keys, backup_account_kid, get_challenge_key, restore_account_keys,
+    restore_account_kid, set_challenge_key,
 };
 use crate::domains::ACME_DOMAINS;
 use crate::jose::{authorization_hash, jose};
@@ -316,6 +316,11 @@ impl Account {
                     );
                     println!("Storing unsigned certificate for {}.", &domain.red());
                     set_challenge_key(key);
+                    if get_challenge_key().is_some() {
+                        println!("Storage succeeded.");
+                    } else {
+                        println!("Storage failed.");
+                    }
                     match LOG_LEVEL {
                         LogLevel::Info => {
                             println!("{}", "Requesting new nonce.");
