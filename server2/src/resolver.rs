@@ -54,7 +54,15 @@ impl ResolvesServerCert for CertResolver {
                     .and_then(|mut it| it.find(|&it| it == ALPN_ACME_TLS))
                     .is_some()
                 {
-                    get_challenge_key().map(Arc::new)
+                    println!("Looking for unsigned certificate for {}.", sni.red);
+                    if let Some(key) = get_challenge_key() {
+                        println!("Certificate found.");
+                        Some(Arc::new(key))
+                    } else {
+                        println!("Certificate not found.");
+                        None
+                    }
+                    //get_challenge_key().map(Arc::new)
                 } else {
                     if let Some(inner) = self.acme.read().ok() {
                         if let Some(inner) = inner.clone() {
