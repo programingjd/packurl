@@ -9,7 +9,6 @@ lazy_static! {
     static ref ACCOUNT_KID: RwLock<Option<Vec<u8>>> = RwLock::new(None);
     static ref CHALLENGE_KEY: RwLock<Option<HashMap<String, CertifiedKey>>> = RwLock::new(None);
 }
-//const CHALLENGE_KEY: RwLock<Option<HashMap<String, CertifiedKey>>> = RwLock::new(None);
 
 pub async fn restore_account_keys() -> Option<Vec<u8>> {
     ACCOUNT_KEYS.read().map_or(None, |it| it.clone())

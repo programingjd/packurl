@@ -3,11 +3,18 @@ pub enum LogLevel {
     Error = 1,
     Warning = 2,
     Info = 3,
+    Debug = 4,
 }
 
-pub const LOG_LEVEL: LogLevel = LogLevel::Info;
+pub const LOG_LEVEL: LogLevel = LogLevel::Debug;
 
 impl LogLevel {
+    pub fn init() {
+        if LOG_LEVEL > LogLevel::Error {
+            LogLevel::Warning.log(|| colored::control::set_override(true));
+        }
+    }
+
     pub fn log<T: FnOnce()>(&self, f: T) {
         if self <= &LOG_LEVEL {
             f()

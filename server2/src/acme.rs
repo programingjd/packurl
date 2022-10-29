@@ -64,7 +64,7 @@ impl Account {
     pub async fn auto_renew(&self) -> Result<()> {
         LogLevel::Info.log(|| println!("{}", "Creating new ACME order."));
         let client = Client::new();
-        LogLevel::Info.log(|| println!("{}", "Getting ACME directory."));
+        LogLevel::Debug.log(|| println!("{}", "Getting ACME directory."));
         let directory = client
             .get(DIRECTORY_URL)
             .send()
@@ -102,7 +102,7 @@ impl Account {
 
     async fn new_account(keypair: &EcdsaKeyPair) -> Result<String> {
         let client = Client::new();
-        LogLevel::Info.log(|| println!("{}", "Getting ACME directory."));
+        LogLevel::Debug.log(|| println!("{}", "Getting ACME directory."));
         let directory = client
             .get(DIRECTORY_URL)
             .send()
@@ -111,9 +111,9 @@ impl Account {
             .json::<Directory>()
             .await
             .map_err(|err| Error::new(ErrorKind::Other, err))?;
-        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
+        LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(&client, &directory).await?;
-        LogLevel::Info.log(|| println!("{}", "Calling new account directory endpoint."));
+        LogLevel::Debug.log(|| println!("{}", "Calling new account directory endpoint."));
         let payload = json!({
             "termsOfServiceAgreed": true,
             "contact": vec![CONTACT]
@@ -151,7 +151,7 @@ impl Account {
         directory: &Directory,
         domains: Vec<String>,
     ) -> Result<Order> {
-        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
+        LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
         let identifiers: Vec<Identifier> = domains.into_iter().map(Identifier::Dns).collect();
         let payload = json!({ "identifiers": identifiers });
@@ -162,7 +162,7 @@ impl Account {
             nonce.as_str(),
             directory.new_order.as_str(),
         )?;
-        LogLevel::Info.log(|| println!("{}", "Calling new order directory endpoint."));
+        LogLevel::Debug.log(|| println!("{}", "Calling new order directory endpoint."));
         let response = Self::jose_request(client, directory.new_order.as_str(), &body).await?;
         if response.status().is_success() {
             let order = response
@@ -179,7 +179,7 @@ impl Account {
     }
 
     async fn authorize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
-        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
+        LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
         let body = jose(
             &self.keypair,
@@ -232,9 +232,10 @@ impl Account {
                         any_ecdsa_type(&PrivateKey(certificate.serialize_private_key_der()))
                             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?,
                     );
-                    println!("Storing unsigned certificate for {}.", &domain.red());
+                    LogLevel::Info
+                        .log(|| println!("Storing unsigned certificate for {}.", &domain.red()));
                     set_challenge_key(domain.as_str(), key)?;
-                    LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
+                    LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
                     let nonce = Self::new_nonce(client, directory).await?;
                     let payload = json!({});
                     let body = jose(
@@ -248,10 +249,14 @@ impl Account {
                         Self::jose_request(client, challenge.url.as_str(), &body).await?;
                     LogLevel::Info.log(|| println!("{}", "Calling challenge trigger endpoint."));
                     if response.status().is_success() {
-                        println!("{}", "Waiting 5 seconds before checking status again.");
+                        LogLevel::Debug.log(|| {
+                            println!("{}", "Waiting 5 seconds before checking status again.")
+                        });
                         sleep(Duration::from_millis(5_000)).await;
-                        println!("{}", format!("Checking status again for url {}.", url));
-                        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
+                        LogLevel::Info.log(|| {
+                            println!("{}", format!("Checking status again for url {}.", url))
+                        });
+                        LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
                         let nonce = Self::new_nonce(client, directory).await?;
                         let body = jose(
                             &self.keypair,
@@ -272,19 +277,19 @@ impl Account {
                                     challenges,
                                     identifier,
                                 } => {
-                                    println!("Still pending.");
+                                    LogLevel::Debug.log(|| println!("Still pending."));
                                 }
                                 Auth::Valid => {
-                                    println!("Valid !");
+                                    LogLevel::Debug.log(|| println!("Valid !"));
                                 }
                                 Auth::Invalid => {
-                                    println!("Invalid !");
+                                    LogLevel::Debug.log(|| println!("Invalid !"));
                                 }
                                 Auth::Expired => {
-                                    println!("Expired !");
+                                    LogLevel::Debug.log(|| println!("Expired !"));
                                 }
                                 Auth::Revoked => {
-                                    println!("Revoked !");
+                                    LogLevel::Debug.log(|| println!("Revoked !"));
                                 }
                             }
                         } else {

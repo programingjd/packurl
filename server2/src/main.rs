@@ -24,8 +24,7 @@ const PORT: u16 = 443;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    LogLevel::Error.log(|| colored::control::set_override(true));
-
+    LogLevel::init();
     let acme_account = Account::init().await?;
     tokio::spawn(async move { acme_account.auto_renew().await });
 
@@ -39,6 +38,7 @@ async fn main() -> Result<()> {
     println!("https://{}", WWW.blue().underline());
     println!("https://{}", CDN.blue().underline());
     println!("https://{}", LOCALHOST.blue().underline());
+
     loop {
         match listener.accept().await {
             Ok((tcp, remote_addr)) => {
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
                 let future = async move {
                     match acceptor.await {
                         Ok(start_handshake) => {
-                            LogLevel::Info.log(|| {
+                            LogLevel::Debug.log(|| {
                                 println!(
                                     "Starting TLS handshake with {}.",
                                     format!("{}", remote_addr.ip()).purple()
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
                             let client_hello = start_handshake.client_hello();
                             match client_hello.server_name() {
                                 Some(sni) => {
-                                    LogLevel::Info.log(|| {
+                                    LogLevel::Debug.log(|| {
                                         println!(
                                             "{}",
                                             format!("TLS SNI extension: {}.", sni.purple())
@@ -74,15 +74,6 @@ async fn main() -> Result<()> {
                                         .and_then(|mut it| it.find(|&it| it == ALPN_ACME_TLS))
                                         .is_some()
                                     {
-                                        LogLevel::Info.log(|| {
-                                            println!(
-                                                "{}",
-                                                format!(
-                                                    "Responding to ACME Challenge for {}.",
-                                                    server_name.purple()
-                                                )
-                                            );
-                                        });
                                         LogLevel::Info.log(|| {
                                             println!(
                                                 "{}",
@@ -133,7 +124,7 @@ async fn main() -> Result<()> {
                                     }
                                 }
                                 None => {
-                                    LogLevel::Info.log(|| {
+                                    LogLevel::Debug.log(|| {
                                         println!("{}", "TLS SNI extension is missing.".red())
                                     });
                                 }
