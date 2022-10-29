@@ -7,7 +7,7 @@ pub const APEX: &'static str = "packurl.net";
 pub const WWW: &'static str = "www.packurl.net";
 pub const CDN: &'static str = "cdn.packurl.net";
 pub const SELF_SIGNED_DOMAINS: DomainList = DomainList {
-    domains: &[CDN, LOCALHOST, LOCALHOST, LOCALHOST_IPV6],
+    domains: &[CDN, LOCALHOST, LOCALHOST_IPV4, LOCALHOST_IPV6],
 };
 pub const ACME_DOMAINS: DomainList = DomainList {
     domains: &[APEX, WWW],

@@ -1,11 +1,7 @@
 use lazy_static::lazy_static;
 use rustls::sign::CertifiedKey;
-use std::borrow::Borrow;
-use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
-use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 use std::sync::RwLock;
 
 lazy_static! {
@@ -24,17 +20,17 @@ pub async fn restore_account_kid() -> Option<Vec<u8>> {
 pub async fn backup_account_keys(bytes: &[u8]) -> Result<()> {
     *ACCOUNT_KEYS
         .write()
-        .map_err(|err| Error::new(ErrorKind::Other, "Failed to write account keys."))? =
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account keys."))? =
         Some(bytes.to_vec());
     *ACCOUNT_KID
         .write()
-        .map_err(|err| Error::new(ErrorKind::Other, "Failed to reset account kid."))? = None;
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to reset account kid."))? = None;
     Ok(())
 }
 pub async fn backup_account_kid(bytes: &[u8]) -> Result<()> {
     *ACCOUNT_KID
         .write()
-        .map_err(|err| Error::new(ErrorKind::Other, "Failed to write account kid."))? =
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account kid."))? =
         Some(bytes.to_vec());
     Ok(())
 }
@@ -42,10 +38,8 @@ pub fn set_challenge_key(domain: &str, key: CertifiedKey) -> Result<()> {
     if let Ok(mut lock) = CHALLENGE_KEY.write() {
         let option = lock.as_mut();
         if let Some(map) = option {
-            println!("Inserting into existing map.");
             map.insert(domain.to_string(), key);
         } else {
-            println!("Inserting into new map.");
             let mut map = HashMap::new();
             map.insert(domain.to_string(), key);
             *lock = Some(map);

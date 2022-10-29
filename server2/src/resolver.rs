@@ -1,15 +1,13 @@
 use crate::cache::get_challenge_key;
 use crate::domains::{ACME_DOMAINS, SELF_SIGNED_DOMAINS};
 use crate::tls::ALPN_ACME_TLS;
-use crate::{LogLevel, LOG_LEVEL};
+use crate::LogLevel;
 use colored::Colorize;
 use rcgen::generate_simple_self_signed;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::{any_supported_type, CertifiedKey};
 use rustls::{Certificate, PrivateKey};
-use std::cell::RefCell;
 use std::io::{Error, ErrorKind};
-use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
 pub struct CertResolver {
@@ -19,12 +17,7 @@ pub struct CertResolver {
 
 impl CertResolver {
     pub fn try_new() -> Result<Self, Error> {
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("Creating self-signed certificates.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("Creating self-signed certificates."));
         let self_signed = generate_simple_self_signed(SELF_SIGNED_DOMAINS)
             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?;
         let private_key = PrivateKey(self_signed.serialize_private_key_der());

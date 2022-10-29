@@ -1,10 +1,11 @@
 use crate::cache::{
-    backup_account_keys, backup_account_kid, get_challenge_key, restore_account_keys,
-    restore_account_kid, set_challenge_key,
+    backup_account_keys, backup_account_kid, restore_account_keys, restore_account_kid,
+    set_challenge_key,
 };
 use crate::domains::ACME_DOMAINS;
 use crate::jose::{authorization_hash, jose};
-use crate::{cache, LogLevel, CDN, LOG_LEVEL};
+use crate::log::LOG_LEVEL;
+use crate::LogLevel;
 use colored::Colorize;
 use rcgen::{Certificate, CertificateParams, CustomExtension, PKCS_ECDSA_P256_SHA256};
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
@@ -16,7 +17,6 @@ use rustls::PrivateKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::{Error, ErrorKind, Result};
-use tokio::spawn;
 use tokio::time::{sleep, Duration};
 
 const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
@@ -31,22 +31,12 @@ impl Account {
     pub async fn init() -> Result<Self> {
         let keypair = match restore_account_keys().await {
             Some(bytes) => {
-                match LOG_LEVEL {
-                    LogLevel::Info => {
-                        println!("{}", "Restoring ACME account keys.");
-                    }
-                    _ => {}
-                }
+                LogLevel::Info.log(|| println!("{}", "Restoring ACME account keys."));
                 EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, bytes.as_slice())
                     .map_err(|_| Error::new(ErrorKind::Other, "Failed to parse account keys."))?
             }
             None => {
-                match LOG_LEVEL {
-                    LogLevel::Info => {
-                        println!("{}", "Creating ACME account keys.");
-                    }
-                    _ => {}
-                }
+                LogLevel::Info.log(|| println!("{}", "Creating ACME account keys."));
                 let rng = SystemRandom::new();
                 let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng)
                     .map_err(|_| Error::new(ErrorKind::Other, "Failed to create account keys."))?;
@@ -58,21 +48,11 @@ impl Account {
         };
         let kid = match restore_account_kid().await {
             Some(bytes) => {
-                match LOG_LEVEL {
-                    LogLevel::Info => {
-                        println!("{}", "Restoring ACME account kid.");
-                    }
-                    _ => {}
-                }
+                LogLevel::Info.log(|| println!("{}", "Restoring ACME account kid."));
                 String::from_utf8(bytes.clone()).map_err(|err| Error::new(ErrorKind::Other, err))?
             }
             None => {
-                match LOG_LEVEL {
-                    LogLevel::Info => {
-                        println!("{}", "Registering ACME account.");
-                    }
-                    _ => {}
-                }
+                LogLevel::Info.log(|| println!("{}", "Registering ACME account."));
                 let kid = Self::new_account(&keypair).await?;
                 backup_account_kid(kid.as_bytes()).await?;
                 kid
@@ -82,19 +62,9 @@ impl Account {
     }
 
     pub async fn auto_renew(&self) -> Result<()> {
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Creating new ACME order.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Creating new ACME order."));
         let client = Client::new();
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Getting ACME directory.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Getting ACME directory."));
         let directory = client
             .get(DIRECTORY_URL)
             .send()
@@ -112,22 +82,16 @@ impl Account {
                 authorizations,
                 finalize,
             } => {
-                match LOG_LEVEL {
-                    LogLevel::Info => {
-                        println!(
-                            "{}",
-                            format!("Order needs {} authorizations.", authorizations.len())
-                        );
-                    }
-                    _ => {}
-                }
+                LogLevel::Info.log(|| {
+                    println!(
+                        "{}",
+                        format!("Order needs {} authorizations.", authorizations.len())
+                    );
+                });
                 for url in authorizations {
-                    match LOG_LEVEL {
-                        LogLevel::Info => {
-                            println!("{}", format!("Authorizing {}.", url));
-                        }
-                        _ => {}
-                    }
+                    LogLevel::Info.log(|| {
+                        println!("{}", format!("Authorizing {}.", url));
+                    });
                     self.authorize(&client, &directory, url.as_str()).await?;
                 }
             }
@@ -138,12 +102,7 @@ impl Account {
 
     async fn new_account(keypair: &EcdsaKeyPair) -> Result<String> {
         let client = Client::new();
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Getting ACME directory.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Getting ACME directory."));
         let directory = client
             .get(DIRECTORY_URL)
             .send()
@@ -152,20 +111,9 @@ impl Account {
             .json::<Directory>()
             .await
             .map_err(|err| Error::new(ErrorKind::Other, err))?;
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Requesting new nonce.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(&client, &directory).await?;
-
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Calling new account directory endpoint.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Calling new account directory endpoint."));
         let payload = json!({
             "termsOfServiceAgreed": true,
             "contact": vec![CONTACT]
@@ -187,11 +135,8 @@ impl Account {
                 .map_err(|err| Error::new(ErrorKind::Other, err))?;
             Ok(kid.to_string())
         } else {
-            match LOG_LEVEL {
-                LogLevel::Error => {}
-                _ => {
-                    Self::print_request_error(response).await;
-                }
+            if LOG_LEVEL > LogLevel::Error {
+                Self::print_request_error(response).await;
             }
             Err(Error::new(
                 ErrorKind::Other,
@@ -206,12 +151,7 @@ impl Account {
         directory: &Directory,
         domains: Vec<String>,
     ) -> Result<Order> {
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Requesting new nonce.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
         let identifiers: Vec<Identifier> = domains.into_iter().map(Identifier::Dns).collect();
         let payload = json!({ "identifiers": identifiers });
@@ -222,12 +162,7 @@ impl Account {
             nonce.as_str(),
             directory.new_order.as_str(),
         )?;
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Calling new order directory endpoint.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Calling new order directory endpoint."));
         let response = Self::jose_request(client, directory.new_order.as_str(), &body).await?;
         if response.status().is_success() {
             let order = response
@@ -236,23 +171,15 @@ impl Account {
                 .map_err(|err| Error::new(ErrorKind::Other, err))?;
             Ok(order)
         } else {
-            match LOG_LEVEL {
-                LogLevel::Error => {}
-                _ => {
-                    Self::print_request_error(response).await;
-                }
+            if LOG_LEVEL > LogLevel::Error {
+                Self::print_request_error(response).await;
             }
             Err(Error::new(ErrorKind::Other, "Failed to create new order."))
         }
     }
 
     async fn authorize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Requesting new nonce.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
         let body = jose(
             &self.keypair,
@@ -261,12 +188,7 @@ impl Account {
             nonce.as_str(),
             url,
         )?;
-        match LOG_LEVEL {
-            LogLevel::Info => {
-                println!("{}", "Calling authorization endpoint.");
-            }
-            _ => {}
-        }
+        LogLevel::Info.log(|| println!("{}", "Calling authorization endpoint."));
         let response = Self::jose_request(client, url, &body).await?;
         if response.status().is_success() {
             match response
@@ -279,15 +201,12 @@ impl Account {
                     identifier,
                 } => {
                     let Identifier::Dns(domain) = identifier;
-                    match LOG_LEVEL {
-                        LogLevel::Info => {
-                            println!(
-                                "{}",
-                                format!("Selecting TlsAlpn01 challenge for domain {}.", &domain)
-                            );
-                        }
-                        _ => {}
-                    }
+                    LogLevel::Info.log(|| {
+                        println!(
+                            "{}",
+                            format!("Selecting TlsAlpn01 challenge for domain {}.", &domain)
+                        );
+                    });
                     let challenge = challenges
                         .iter()
                         .find(|it| it.typ == ChallengeType::TlsAlpn01)
@@ -315,17 +234,7 @@ impl Account {
                     );
                     println!("Storing unsigned certificate for {}.", &domain.red());
                     set_challenge_key(domain.as_str(), key)?;
-                    if get_challenge_key(domain.as_str()).is_some() {
-                        println!("Storage succeeded.");
-                    } else {
-                        println!("Storage failed.");
-                    }
-                    match LOG_LEVEL {
-                        LogLevel::Info => {
-                            println!("{}", "Requesting new nonce.");
-                        }
-                        _ => {}
-                    }
+                    LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
                     let nonce = Self::new_nonce(client, directory).await?;
                     let payload = json!({});
                     let body = jose(
@@ -337,22 +246,12 @@ impl Account {
                     )?;
                     let response =
                         Self::jose_request(client, challenge.url.as_str(), &body).await?;
-                    match LOG_LEVEL {
-                        LogLevel::Info => {
-                            println!("{}", "Calling challenge trigger endpoint.");
-                        }
-                        _ => {}
-                    }
+                    LogLevel::Info.log(|| println!("{}", "Calling challenge trigger endpoint."));
                     if response.status().is_success() {
                         println!("{}", "Waiting 5 seconds before checking status again.");
                         sleep(Duration::from_millis(5_000)).await;
                         println!("{}", format!("Checking status again for url {}.", url));
-                        match LOG_LEVEL {
-                            LogLevel::Info => {
-                                println!("{}", "Requesting new nonce.");
-                            }
-                            _ => {}
-                        }
+                        LogLevel::Info.log(|| println!("{}", "Requesting new nonce."));
                         let nonce = Self::new_nonce(client, directory).await?;
                         let body = jose(
                             &self.keypair,
@@ -361,12 +260,7 @@ impl Account {
                             nonce.as_str(),
                             url,
                         )?;
-                        match LOG_LEVEL {
-                            LogLevel::Info => {
-                                println!("{}", "Calling authorization endpoint.");
-                            }
-                            _ => {}
-                        }
+                        LogLevel::Info.log(|| println!("{}", "Calling authorization endpoint."));
                         let response = Self::jose_request(client, url, &body).await?;
                         if response.status().is_success() {
                             match response
@@ -394,21 +288,15 @@ impl Account {
                                 }
                             }
                         } else {
-                            match LOG_LEVEL {
-                                LogLevel::Error => {}
-                                _ => {
-                                    Self::print_request_error(response).await;
-                                }
+                            if LOG_LEVEL > LogLevel::Error {
+                                Self::print_request_error(response).await;
                             }
                             //Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
                         }
                         Ok(())
                     } else {
-                        match LOG_LEVEL {
-                            LogLevel::Error => {}
-                            _ => {
-                                Self::print_request_error(response).await;
-                            }
+                        if LOG_LEVEL > LogLevel::Error {
+                            Self::print_request_error(response).await;
                         }
                         Err(Error::new(ErrorKind::Other, "Failed to trigger challenge."))
                     }
@@ -419,11 +307,8 @@ impl Account {
                 }
             }
         } else {
-            match LOG_LEVEL {
-                LogLevel::Error => {}
-                _ => {
-                    Self::print_request_error(response).await;
-                }
+            if LOG_LEVEL > LogLevel::Error {
+                Self::print_request_error(response).await;
             }
             Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
         }
