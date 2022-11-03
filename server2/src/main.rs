@@ -9,7 +9,7 @@ mod tls;
 use crate::acme::Account;
 use crate::domains::{APEX, LOCALHOST, WWW};
 use crate::log::LogLevel;
-use crate::tls::{config, ALPN_ACME_TLS};
+use crate::tls::{acme_config, config, ALPN_ACME_TLS};
 use colored::Colorize;
 use domains::CDN;
 use response::{CDN_RESPONSE, OK_RESPONSE};
@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
     tokio::spawn(async move { acme_account.auto_renew().await });
 
     let config = config()?;
+    let acme_config = acme_config()?;
 
     LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server."));
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
@@ -50,6 +51,7 @@ async fn main() -> Result<()> {
                 });
                 let acceptor = LazyConfigAcceptor::new(Acceptor::default(), tcp);
                 let config = config.clone();
+                let acme_config = acme_config.clone();
                 let future = async move {
                     match acceptor.await {
                         Ok(start_handshake) => {
@@ -83,7 +85,7 @@ async fn main() -> Result<()> {
                                                 )
                                             );
                                         });
-                                        match start_handshake.into_stream(config).await {
+                                        match start_handshake.into_stream(acme_config).await {
                                             Ok(mut stream) => {
                                                 let _ = stream.write_all(OK_RESPONSE).await;
                                                 let _ = stream.shutdown().await;

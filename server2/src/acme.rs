@@ -217,7 +217,8 @@ impl Account {
                             )
                         })?;
                     let auth = authorization_hash(&self.keypair, challenge.token.as_str())?;
-                    let mut params = CertificateParams::new(ACME_DOMAINS);
+                    // let mut params = CertificateParams::new(ACME_DOMAINS);
+                    let mut params = CertificateParams::new(vec![domain.clone()]);
                     params.alg = &PKCS_ECDSA_P256_SHA256;
                     params.custom_extensions =
                         vec![CustomExtension::new_acme_identifier(auth.as_slice())];
