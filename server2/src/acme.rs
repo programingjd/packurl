@@ -1,6 +1,6 @@
 use crate::cache::{
-    backup_account_keys, backup_account_kid, restore_account_keys, restore_account_kid,
-    set_certificate, set_challenge_key,
+    backup_account_keys, backup_account_kid, get_certificate, restore_account_keys,
+    restore_account_kid, set_certificate, set_challenge_key,
 };
 use crate::domains::ACME_DOMAINS;
 use crate::jose::{authorization_hash, jose};
@@ -365,6 +365,8 @@ impl Account {
                     .into_bytes();
                     LogLevel::Info.log(|| println!("{}", "Saving certificate."));
                     set_certificate(&pem)?;
+                    get_certificate()
+                        .ok_or_else(|| Error::new(ErrorKind::Other, "Saving failed."))?;
                     Ok(())
                 }
                 _ => unreachable!(),

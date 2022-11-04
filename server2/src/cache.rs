@@ -93,14 +93,5 @@ pub fn set_certificate(pem: &[u8]) -> Result<()> {
     }
 }
 pub fn get_certificate() -> Option<CertifiedKey> {
-    if let Ok(lock) = CERTIFICATE.read() {
-        let option = lock.as_ref();
-        if let Some(cert) = option {
-            Some(cert.clone())
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+    CERTIFICATE.read().map_or(None, |it| it.clone())
 }
