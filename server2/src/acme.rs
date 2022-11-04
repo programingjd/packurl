@@ -8,7 +8,9 @@ use crate::log::LOG_LEVEL;
 use crate::LogLevel;
 use base64::URL_SAFE_NO_PAD;
 use colored::Colorize;
-use rcgen::{Certificate, CertificateParams, CustomExtension, PKCS_ECDSA_P256_SHA256};
+use rcgen::{
+    Certificate, CertificateParams, CustomExtension, DistinguishedName, PKCS_ECDSA_P256_SHA256,
+};
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use reqwest::{Client, Response};
 use ring::rand::SystemRandom;
@@ -324,6 +326,7 @@ impl Account {
     async fn finalize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
         LogLevel::Info.log(|| println!("{}", "Creating CSR."));
         let mut params = CertificateParams::new(ACME_DOMAINS);
+        params.distinguished_name = DistinguishedName::new();
         params.alg = &PKCS_ECDSA_P256_SHA256;
         let cert =
             Certificate::from_params(params).map_err(|err| Error::new(ErrorKind::Other, err))?;
