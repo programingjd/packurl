@@ -79,17 +79,11 @@ pub fn set_certificate(pem: &[u8]) -> Result<()> {
             .into_iter()
             .map(|pem| Certificate(pem.contents))
             .collect();
-        let mut cert = CertifiedKey::new(chain, key);
-        if let Ok(mut lock) = CERTIFICATE.write() {
-            let mut option = lock.as_mut();
-            option.replace(&mut cert);
-            Ok(())
-        } else {
-            Err(Error::new(
-                ErrorKind::Other,
-                "Failed to write challenge key.",
-            ))
-        }
+        *CERTIFICATE
+            .write()
+            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write certificate chain."))? =
+            Some(CertifiedKey::new(chain, key));
+        Ok(())
     }
 }
 pub fn get_certificate() -> Option<CertifiedKey> {
