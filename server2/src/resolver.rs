@@ -1,4 +1,4 @@
-use crate::cache::get_challenge_key;
+use crate::cache::{get_certificate, get_challenge_key};
 use crate::domains::{ACME_DOMAINS, SELF_SIGNED_DOMAINS};
 use crate::tls::ALPN_ACME_TLS;
 use crate::LogLevel;
@@ -62,7 +62,17 @@ impl ResolvesServerCert for CertResolver {
                         if let Some(inner) = inner.clone() {
                             Some(inner.clone())
                         } else {
-                            None
+                            if let Some(key) = get_certificate() {
+                                if let Some(mut lock) = self.acme.write().ok() {
+                                    let key = Arc::new(key);
+                                    let _ = lock.replace(key.clone());
+                                    Some(key)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
                         }
                     } else {
                         None

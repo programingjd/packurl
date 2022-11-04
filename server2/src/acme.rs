@@ -1,11 +1,12 @@
 use crate::cache::{
     backup_account_keys, backup_account_kid, restore_account_keys, restore_account_kid,
-    set_challenge_key,
+    set_certificate, set_challenge_key,
 };
 use crate::domains::ACME_DOMAINS;
 use crate::jose::{authorization_hash, jose};
 use crate::log::LOG_LEVEL;
 use crate::LogLevel;
+use base64::URL_SAFE_NO_PAD;
 use colored::Colorize;
 use rcgen::{Certificate, CertificateParams, CustomExtension, PKCS_ECDSA_P256_SHA256};
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
@@ -94,6 +95,9 @@ impl Account {
                     });
                     self.authorize(&client, &directory, url.as_str()).await?;
                 }
+                LogLevel::Info.log(|| println!("{}", "Finalizing order."));
+                self.finalize(&client, &directory, finalize.as_str())
+                    .await?;
             }
             _ => unreachable!(),
         }
@@ -275,31 +279,28 @@ impl Account {
                                 .map_err(|err| Error::new(ErrorKind::Other, err))?
                             {
                                 Auth::Pending {
-                                    challenges,
-                                    identifier,
+                                    challenges: _,
+                                    identifier: _,
                                 } => {
-                                    LogLevel::Debug.log(|| println!("Still pending."));
+                                    Err(Error::new(ErrorKind::Other, "Challenge is still pending."))
                                 }
-                                Auth::Valid => {
-                                    LogLevel::Debug.log(|| println!("Valid !"));
-                                }
+                                Auth::Valid => Ok(()),
                                 Auth::Invalid => {
-                                    LogLevel::Debug.log(|| println!("Invalid !"));
+                                    Err(Error::new(ErrorKind::Other, "Challenge is invalid."))
                                 }
                                 Auth::Expired => {
-                                    LogLevel::Debug.log(|| println!("Expired !"));
+                                    Err(Error::new(ErrorKind::Other, "Challenge has expired."))
                                 }
                                 Auth::Revoked => {
-                                    LogLevel::Debug.log(|| println!("Revoked !"));
+                                    Err(Error::new(ErrorKind::Other, "Challenge was revoked."))
                                 }
                             }
                         } else {
                             if LOG_LEVEL > LogLevel::Error {
                                 Self::print_request_error(response).await;
                             }
-                            //Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
+                            Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
                         }
-                        Ok(())
                     } else {
                         if LOG_LEVEL > LogLevel::Error {
                             Self::print_request_error(response).await;
@@ -317,6 +318,92 @@ impl Account {
                 Self::print_request_error(response).await;
             }
             Err(Error::new(ErrorKind::Other, "Failed to authorize url."))
+        }
+    }
+
+    async fn finalize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
+        LogLevel::Info.log(|| println!("{}", "Creating CSR."));
+        let mut params = CertificateParams::new(ACME_DOMAINS);
+        params.alg = &PKCS_ECDSA_P256_SHA256;
+        let cert =
+            Certificate::from_params(params).map_err(|err| Error::new(ErrorKind::Other, err))?;
+        let csr = cert
+            .serialize_request_der()
+            .map_err(|err| Error::new(ErrorKind::Other, err))?;
+        LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
+        let nonce = Self::new_nonce(client, directory).await?;
+        let payload = json!({ "csr": base64::encode_config(csr, URL_SAFE_NO_PAD) });
+        let body = jose(
+            &self.keypair,
+            Some(payload),
+            Some(self.kid.as_str()),
+            nonce.as_str(),
+            url,
+        )?;
+        LogLevel::Info.log(|| println!("{}", "Calling finalize endpoint."));
+        let response = Self::jose_request(client, url, &body).await?;
+        if response.status().is_success() {
+            match response
+                .json()
+                .await
+                .map_err(|err| Error::new(ErrorKind::Other, err))?
+            {
+                Order::Invalid => return Err(Error::new(ErrorKind::Other, "Order is invalid.")),
+                Order::Valid { certificate } => {
+                    LogLevel::Info.log(|| println!("{}", "Certificate has been issued."));
+                    let pem = [
+                        &cert.serialize_private_key_pem(),
+                        "\n",
+                        &self
+                            .download_certificate(client, directory, certificate.as_str())
+                            .await?,
+                    ]
+                    .concat()
+                    .into_bytes();
+                    set_certificate(&pem)?;
+                    Ok(())
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            if LOG_LEVEL > LogLevel::Error {
+                Self::print_request_error(response).await;
+            }
+            Err(Error::new(ErrorKind::Other, "Failed to finalize order."))
+        }
+    }
+
+    async fn download_certificate(
+        &self,
+        client: &Client,
+        directory: &Directory,
+        url: &str,
+    ) -> Result<String> {
+        LogLevel::Info.log(|| println!("{}", "Downloading certificate."));
+        let nonce = Self::new_nonce(client, directory).await?;
+        let body = jose(
+            &self.keypair,
+            None,
+            Some(self.kid.as_str()),
+            nonce.as_str(),
+            url,
+        )?;
+        LogLevel::Info.log(|| println!("{}", "Calling download endpoint."));
+        let response = Self::jose_request(client, url, &body).await?;
+        if response.status().is_success() {
+            let order = response
+                .text()
+                .await
+                .map_err(|err| Error::new(ErrorKind::Other, err))?;
+            Ok(order)
+        } else {
+            if LOG_LEVEL > LogLevel::Error {
+                Self::print_request_error(response).await;
+            }
+            Err(Error::new(
+                ErrorKind::Other,
+                "Failed to download certificate.",
+            ))
         }
     }
 
@@ -370,7 +457,7 @@ enum Order {
         finalize: String,
     },
     #[serde(rename = "ready")]
-    Ready { finalize: String },
+    Ready, // { finalize: String },
     #[serde(rename = "valid")]
     Valid { certificate: String },
     #[serde(rename = "invalid")]

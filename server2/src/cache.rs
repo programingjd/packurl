@@ -1,5 +1,7 @@
 use lazy_static::lazy_static;
-use rustls::sign::CertifiedKey;
+use pem::parse_many;
+use rustls::sign::{any_ecdsa_type, CertifiedKey};
+use rustls::{Certificate, PrivateKey};
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 use std::sync::RwLock;
@@ -8,6 +10,7 @@ lazy_static! {
     static ref ACCOUNT_KEYS: RwLock<Option<Vec<u8>>> = RwLock::new(None);
     static ref ACCOUNT_KID: RwLock<Option<Vec<u8>>> = RwLock::new(None);
     static ref CHALLENGE_KEY: RwLock<Option<HashMap<String, CertifiedKey>>> = RwLock::new(None);
+    static ref CERTIFICATE: RwLock<Option<CertifiedKey>> = RwLock::new(None);
 }
 
 pub async fn restore_account_keys() -> Option<Vec<u8>> {
@@ -56,6 +59,44 @@ pub fn get_challenge_key(domain: &str) -> Option<CertifiedKey> {
         let option = lock.as_ref();
         if let Some(map) = option {
             map.get(domain).map(|it| it.clone())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub fn set_certificate(pem: &[u8]) -> Result<()> {
+    let mut pems =
+        parse_many(&pem).map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse PEM."))?;
+    if pems.len() < 2 {
+        Err(Error::new(ErrorKind::Other, "Incomplete PEM."))
+    } else {
+        let key = any_ecdsa_type(&PrivateKey(pems.remove(0).contents))
+            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse private key."))?;
+        let chain = pems
+            .into_iter()
+            .map(|pem| Certificate(pem.contents))
+            .collect();
+        let mut cert = CertifiedKey::new(chain, key);
+        if let Ok(mut lock) = CERTIFICATE.write() {
+            let mut option = lock.as_mut();
+            option.replace(&mut cert);
+            Ok(())
+        } else {
+            Err(Error::new(
+                ErrorKind::Other,
+                "Failed to write challenge key.",
+            ))
+        }
+    }
+}
+pub fn get_certificate() -> Option<CertifiedKey> {
+    if let Ok(lock) = CERTIFICATE.read() {
+        let option = lock.as_ref();
+        if let Some(cert) = option {
+            Some(cert.clone())
         } else {
             None
         }
