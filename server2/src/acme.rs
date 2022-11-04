@@ -360,6 +360,7 @@ impl Account {
                     ]
                     .concat()
                     .into_bytes();
+                    LogLevel::Info.log(|| println!("{}", "Saving certificate."));
                     set_certificate(&pem)?;
                     Ok(())
                 }
