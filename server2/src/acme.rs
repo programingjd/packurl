@@ -367,6 +367,7 @@ impl Account {
                     set_certificate(&pem)?;
                     get_certificate()
                         .ok_or_else(|| Error::new(ErrorKind::Other, "Saving failed."))?;
+                    LogLevel::Info.log(|| println!("{}", "Certificate saved."));
                     Ok(())
                 }
                 _ => unreachable!(),

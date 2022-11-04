@@ -66,13 +66,15 @@ impl ResolvesServerCert for CertResolver {
                                 println!("Looking for issued certificate for {}.", sni.red())
                             });
                             if let Some(key) = get_certificate() {
+                                LogLevel::Debug.log(|| println!("Certificate found."));
                                 if let Some(mut lock) = self.acme.write().ok() {
-                                    LogLevel::Debug.log(|| println!("Certificate found."));
                                     let key = Arc::new(key);
                                     let _ = lock.replace(key.clone());
+                                    LogLevel::Debug.log(|| println!("Certificate loaded."));
                                     Some(key)
                                 } else {
-                                    LogLevel::Debug.log(|| println!("Certificate not found."));
+                                    LogLevel::Debug
+                                        .log(|| println!("Certificate could not be loaded."));
                                     None
                                 }
                             } else {
