@@ -17,8 +17,10 @@ use rustls::server::Acceptor;
 use std::io::Result;
 use std::net::Ipv6Addr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use tokio::time::interval;
 use tokio_rustls::LazyConfigAcceptor;
 
 const PORT: u16 = 443;
@@ -27,7 +29,22 @@ const PORT: u16 = 443;
 async fn main() -> Result<()> {
     LogLevel::init();
     let acme_account = Account::init().await?;
-    tokio::spawn(async move { acme_account.auto_renew().await });
+    tokio::spawn(async move {
+        let mut interval = interval(Duration::from_secs(86_400)); // 1 day
+        loop {
+            match acme_account.auto_renew().await {
+                Ok(_) => {
+                    LogLevel::Info
+                        .log(|| println!("{}", "Successfully renewed certificate.".green()));
+                }
+                Err(err) => LogLevel::Warning.log(|| {
+                    println!("{}", "Failed to renew certificate.".red());
+                    println!("{:?}", err);
+                }),
+            }
+            interval.tick().await;
+        }
+    });
 
     let config = config()?;
 

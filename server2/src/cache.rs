@@ -5,12 +5,13 @@ use rustls::{Certificate, PrivateKey};
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 use std::sync::RwLock;
+use tokio::time::Instant;
 
 lazy_static! {
     static ref ACCOUNT_KEYS: RwLock<Option<Vec<u8>>> = RwLock::new(None);
     static ref ACCOUNT_KID: RwLock<Option<Vec<u8>>> = RwLock::new(None);
     static ref CHALLENGE_KEY: RwLock<Option<HashMap<String, CertifiedKey>>> = RwLock::new(None);
-    static ref CERTIFICATE: RwLock<Option<CertifiedKey>> = RwLock::new(None);
+    static ref CERTIFICATE: RwLock<Option<(CertifiedKey, Instant)>> = RwLock::new(None);
 }
 
 pub async fn restore_account_keys() -> Option<Vec<u8>> {
@@ -82,10 +83,10 @@ pub fn set_certificate(pem: &[u8]) -> Result<()> {
         *CERTIFICATE
             .write()
             .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write certificate chain."))? =
-            Some(CertifiedKey::new(chain, key));
+            Some((CertifiedKey::new(chain, key), Instant::now()));
         Ok(())
     }
 }
-pub fn get_certificate() -> Option<CertifiedKey> {
+pub fn get_certificate() -> Option<(CertifiedKey, Instant)> {
     CERTIFICATE.read().map_or(None, |it| it.clone())
 }

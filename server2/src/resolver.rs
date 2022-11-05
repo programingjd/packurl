@@ -9,9 +9,13 @@ use rustls::sign::{any_supported_type, CertifiedKey};
 use rustls::{Certificate, PrivateKey};
 use std::io::{Error, ErrorKind};
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
+use tokio::time::Instant;
+
+const MAX_DURATION: Duration = Duration::from_secs(90_000); // a little over 1 day
 
 pub struct CertResolver {
-    acme: RwLock<Option<Arc<CertifiedKey>>>,
+    acme: RwLock<Option<(Arc<CertifiedKey>, Instant)>>,
     self_signed: Arc<CertifiedKey>,
 }
 
@@ -39,6 +43,26 @@ impl CertResolver {
     }
 }
 
+impl CertResolver {
+    fn update_certificate(&self) -> Option<Arc<CertifiedKey>> {
+        if let Some((key, instant)) = get_certificate() {
+            LogLevel::Debug.log(|| println!("Certificate found."));
+            if let Some(mut lock) = self.acme.write().ok() {
+                let key = Arc::new(key);
+                let _ = lock.replace((key.clone(), instant));
+                LogLevel::Debug.log(|| println!("Certificate loaded."));
+                Some(key)
+            } else {
+                LogLevel::Debug.log(|| println!("Certificate could not be loaded."));
+                None
+            }
+        } else {
+            LogLevel::Debug.log(|| println!("Certificate not found."));
+            None
+        }
+    }
+}
+
 impl ResolvesServerCert for CertResolver {
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         if let Some(sni) = client_hello.server_name() {
@@ -60,28 +84,22 @@ impl ResolvesServerCert for CertResolver {
                 } else {
                     if let Some(inner) = self.acme.read().ok() {
                         if let Some(inner) = inner.clone() {
-                            Some(inner.clone())
+                            let key = inner.0.clone();
+                            let elapsed = inner.1.elapsed();
+                            drop(inner);
+                            if elapsed > MAX_DURATION {
+                                LogLevel::Debug.log(|| {
+                                    println!("Updating issued certificate for {}.", sni.red())
+                                });
+                                let _ = self.update_certificate();
+                            }
+                            Some(key)
                         } else {
                             drop(inner);
                             LogLevel::Debug.log(|| {
                                 println!("Looking for issued certificate for {}.", sni.red())
                             });
-                            if let Some(key) = get_certificate() {
-                                LogLevel::Debug.log(|| println!("Certificate found."));
-                                if let Some(mut lock) = self.acme.write().ok() {
-                                    let key = Arc::new(key);
-                                    let _ = lock.replace(key.clone());
-                                    LogLevel::Debug.log(|| println!("Certificate loaded."));
-                                    Some(key)
-                                } else {
-                                    LogLevel::Debug
-                                        .log(|| println!("Certificate could not be loaded."));
-                                    None
-                                }
-                            } else {
-                                LogLevel::Debug.log(|| println!("Certificate not found."));
-                                None
-                            }
+                            self.update_certificate()
                         }
                     } else {
                         None
