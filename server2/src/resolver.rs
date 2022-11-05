@@ -62,6 +62,7 @@ impl ResolvesServerCert for CertResolver {
                         if let Some(inner) = inner.clone() {
                             Some(inner.clone())
                         } else {
+                            drop(inner);
                             LogLevel::Debug.log(|| {
                                 println!("Looking for issued certificate for {}.", sni.red())
                             });
