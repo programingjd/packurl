@@ -1,24 +1,25 @@
 mod acme;
 mod cache;
 mod domains;
+mod handlers;
 mod jose;
 mod log;
 mod resolver;
 mod response;
 mod tls;
-use crate::acme::Account;
-use crate::domains::{APEX, LOCALHOST, WWW};
-use crate::log::LogLevel;
-use crate::tls::{config, ALPN_ACME_TLS};
+use crate::response::OK_RESPONSE;
+use acme::Account;
 use colored::Colorize;
-use domains::CDN;
-use response::{CDN_RESPONSE, OK_RESPONSE};
+use domains::{APEX, CDN, LOCALHOST, LOCALHOST_IPV4, LOCALHOST_IPV6, WWW};
+use handlers::{handle_apex_request, handle_cdn_request, handle_localhost_request};
+use log::LogLevel;
 use rustls::server::Acceptor;
 use std::io::Result;
 use std::net::Ipv6Addr;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tls::{config, ALPN_ACME_TLS};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::time::interval;
 use tokio_rustls::LazyConfigAcceptor;
@@ -122,17 +123,16 @@ async fn main() -> Result<()> {
                                         match start_handshake.into_stream(config).await {
                                             Ok(mut stream) => {
                                                 match server_name.as_str() {
+                                                    LOCALHOST | LOCALHOST_IPV4 | LOCALHOST_IPV6 => {
+                                                        handle_localhost_request(&mut stream).await;
+                                                    }
                                                     CDN => {
-                                                        let _ =
-                                                            stream.write_all(CDN_RESPONSE).await;
+                                                        handle_cdn_request(&mut stream).await;
                                                     }
-                                                    _ => {
-                                                        let mut buf = [0; 16];
-                                                        if stream.read_exact(&mut buf).await.is_ok()
-                                                        {
-                                                        }
-                                                        let _ = stream.write_all(OK_RESPONSE).await;
+                                                    APEX | WWW => {
+                                                        handle_apex_request(&mut stream).await;
                                                     }
+                                                    _ => {}
                                                 }
                                                 let _ = stream.shutdown().await;
                                             }
