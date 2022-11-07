@@ -102,11 +102,11 @@ impl Account {
                     .await?;
             }
             Order::Valid { certificate } => {
-                LogLevel::Error::log(|| println!("Didn't expect order to be valid at this point"));
+                LogLevel::Error.log(|| println!("Didn't expect order to be valid at this point"));
                 panic!();
             }
             Order::Ready => {
-                LogLevel::Error::log(|| println!("Didn't expect order to be ready at this point"));
+                LogLevel::Error.log(|| println!("Didn't expect order to be ready at this point"));
                 panic!();
             }
             _ => unreachable!(),
