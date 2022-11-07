@@ -101,13 +101,11 @@ impl Account {
                 self.finalize(&client, &directory, finalize.as_str())
                     .await?;
             }
-            Order::Valid { certificate } => {
-                LogLevel::Error.log(|| println!("Didn't expect order to be valid at this point"));
-                panic!();
-            }
-            Order::Ready => {
-                LogLevel::Error.log(|| println!("Didn't expect order to be ready at this point"));
-                panic!();
+            Order::Ready { finalize } => {
+                LogLevel::Info.log(|| println!("Order already authorized."));
+                LogLevel::Info.log(|| println!("{}", "Finalizing order."));
+                self.finalize(&client, &directory, finalize.as_str())
+                    .await?;
             }
             _ => unreachable!(),
         }
@@ -472,7 +470,7 @@ enum Order {
         finalize: String,
     },
     #[serde(rename = "ready")]
-    Ready, // { finalize: String },
+    Ready { finalize: String },
     #[serde(rename = "valid")]
     Valid { certificate: String },
     #[serde(rename = "invalid")]
