@@ -40,5 +40,4 @@ pub async fn handle_apex_request(stream: &mut TlsStream<TcpStream>) {
             }
         }
     }
-    let _ = stream.write_all(OK_RESPONSE).await;
 }
