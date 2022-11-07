@@ -7,7 +7,6 @@ use crate::response::{
 };
 use async_recursion::async_recursion;
 use colored::Colorize;
-use const_str::from_utf8;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use std::io::{Error, ErrorKind, Result};
