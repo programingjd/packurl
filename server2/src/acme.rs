@@ -101,6 +101,14 @@ impl Account {
                 self.finalize(&client, &directory, finalize.as_str())
                     .await?;
             }
+            Order::Valid { certificate } => {
+                LogLevel::Error::log(|| println!("Didn't expect order to be valid at this point"));
+                panic!();
+            }
+            Order::Ready => {
+                LogLevel::Error::log(|| println!("Didn't expect order to be ready at this point"));
+                panic!();
+            }
             _ => unreachable!(),
         }
         Ok(())
