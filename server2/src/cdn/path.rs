@@ -5,13 +5,6 @@ pub struct UriPath<'a> {
     components: Vec<String>,
 }
 
-impl AsRef<Path> for UriPath<'_> {
-    #[inline]
-    fn as_ref(&self) -> &Path {
-        Path::new(self.to_string().as_str())
-    }
-}
-
 impl ToString for UriPath<'_> {
     fn to_string(&self) -> String {
         format!("{}{}", self.prefix, self.components.join("/"))
