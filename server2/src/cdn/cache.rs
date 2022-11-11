@@ -1,10 +1,10 @@
+use crate::cdn::path::UriPath;
 use crate::domains::CDN;
 use crate::log::LogLevel;
 use async_recursion::async_recursion;
 use colored::Colorize;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use normalize_path::NormalizePath;
 use std::io::{Error, ErrorKind, Result};
 use std::path::Path;
 use std::sync::Arc;
@@ -223,20 +223,16 @@ async fn walk(path: &Path) -> Result<()> {
         }
     }
     if stat.is_file() {
-        if let Ok(relative_path) = path.strip_prefix(ROOT) {
-            let uri_path = Path::new(PREFIX).join(relative_path).normalize();
-            if let Some(parent) = uri_path
-                .parent()
-                .and_then(|it| it.to_str())
-                .map(|it| it.to_lowercase())
-            {
-                if let Some(filename) = uri_path
+        if let Some(uri_path) = UriPath::from(PREFIX, ROOT, path) {
+            if let Some(parent) = uri_path.parent() {
+                if let Some(filename) = path
                     .file_name()
                     .and_then(|it| it.to_str().map(|it| it.to_lowercase()))
                 {
                     if filename == "index.html" {
                         if let Ok((etag, content_length)) = etag_and_size(path).await {
-                            let stored = FILES.get(&parent);
+                            let key = parent.to_string();
+                            let stored = FILES.get(&key);
                             let update = stored.is_some();
                             let insert = if let Some(stored) = stored {
                                 stored.etag == etag
@@ -246,15 +242,15 @@ async fn walk(path: &Path) -> Result<()> {
                             if insert {
                                 if update {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Updating {}.", parent.yellow()))
+                                        println!("{}", format!("Updating {}.", key.yellow()))
                                     });
                                 } else {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Adding   {}.", parent.green()))
+                                        println!("{}", format!("Adding   {}.", key.green()))
                                     });
                                 }
                                 let _ = FILES.insert(
-                                    parent,
+                                    key,
                                     build_response(
                                         path,
                                         etag,
@@ -270,7 +266,7 @@ async fn walk(path: &Path) -> Result<()> {
                         cache_control_and_content_type(&filename)
                     {
                         if let Ok((etag, content_length)) = etag_and_size(path).await {
-                            let key = format!("{}/{}", parent, filename);
+                            let key = parent.join(&filename).to_string();
                             let stored = FILES.get(&key);
                             let update = stored.is_some();
                             let insert = if let Some(stored) = stored {

@@ -121,17 +121,15 @@ impl Account {
                     LogLevel::Info.log(|| {
                         println!("{}", format!("Authorizing {}.", url));
                     });
-                    self.authorize(&client, &directory, url.as_str()).await?;
+                    self.authorize(&client, &directory, &url).await?;
                 }
                 LogLevel::Info.log(|| println!("{}", "Finalizing order."));
-                self.finalize(&client, &directory, finalize.as_str())
-                    .await?;
+                self.finalize(&client, &directory, &finalize).await?;
             }
             Order::Ready { finalize } => {
                 LogLevel::Info.log(|| println!("Order already authorized."));
                 LogLevel::Info.log(|| println!("{}", "Finalizing order."));
-                self.finalize(&client, &directory, finalize.as_str())
-                    .await?;
+                self.finalize(&client, &directory, &finalize).await?;
             }
             _ => unreachable!(),
         }
@@ -156,14 +154,8 @@ impl Account {
             "termsOfServiceAgreed": true,
             "contact": vec![CONTACT]
         });
-        let body = jose(
-            keypair,
-            Some(payload),
-            None,
-            nonce.as_str(),
-            directory.new_account.as_str(),
-        )?;
-        let response = Self::jose_request(&client, directory.new_account.as_str(), &body).await?;
+        let body = jose(keypair, Some(payload), None, &nonce, &directory.new_account)?;
+        let response = Self::jose_request(&client, &directory.new_account, &body).await?;
         if response.status().is_success() {
             let kid = response
                 .headers()
@@ -196,12 +188,12 @@ impl Account {
         let body = jose(
             &self.keypair,
             Some(payload),
-            Some(self.kid.as_str()),
-            nonce.as_str(),
-            directory.new_order.as_str(),
+            Some(&self.kid),
+            &nonce,
+            &directory.new_order,
         )?;
         LogLevel::Debug.log(|| println!("{}", "Calling new order directory endpoint."));
-        let response = Self::jose_request(client, directory.new_order.as_str(), &body).await?;
+        let response = Self::jose_request(client, &directory.new_order, &body).await?;
         if response.status().is_success() {
             let order = response
                 .json()
@@ -219,13 +211,7 @@ impl Account {
     async fn authorize(&self, client: &Client, directory: &Directory, url: &str) -> Result<()> {
         LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
-        let body = jose(
-            &self.keypair,
-            None,
-            Some(self.kid.as_str()),
-            nonce.as_str(),
-            url,
-        )?;
+        let body = jose(&self.keypair, None, Some(&self.kid), &nonce, url)?;
         LogLevel::Info.log(|| println!("{}", "Calling authorization endpoint."));
         let response = Self::jose_request(client, url, &body).await?;
         if response.status().is_success() {
@@ -254,7 +240,7 @@ impl Account {
                                 "TlsAlpn01 challenge is not available.",
                             )
                         })?;
-                    let auth = authorization_hash(&self.keypair, challenge.token.as_str())?;
+                    let auth = authorization_hash(&self.keypair, &challenge.token)?;
                     // let mut params = CertificateParams::new(ACME_DOMAINS);
                     let mut params = CertificateParams::new(vec![domain.clone()]);
                     params.alg = &PKCS_ECDSA_P256_SHA256;
@@ -273,19 +259,18 @@ impl Account {
                     );
                     LogLevel::Info
                         .log(|| println!("Storing unsigned certificate for {}.", &domain.red()));
-                    set_challenge_key(domain.as_str(), key)?;
+                    set_challenge_key(&domain, key)?;
                     LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
                     let nonce = Self::new_nonce(client, directory).await?;
                     let payload = json!({});
                     let body = jose(
                         &self.keypair,
                         Some(payload),
-                        Some(self.kid.as_str()),
-                        nonce.as_str(),
-                        challenge.url.as_str(),
+                        Some(&self.kid),
+                        &nonce,
+                        &challenge.url,
                     )?;
-                    let response =
-                        Self::jose_request(client, challenge.url.as_str(), &body).await?;
+                    let response = Self::jose_request(client, &challenge.url, &body).await?;
                     LogLevel::Info.log(|| println!("{}", "Calling challenge trigger endpoint."));
                     if response.status().is_success() {
                         LogLevel::Debug.log(|| {
@@ -297,13 +282,7 @@ impl Account {
                         });
                         LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
                         let nonce = Self::new_nonce(client, directory).await?;
-                        let body = jose(
-                            &self.keypair,
-                            None,
-                            Some(self.kid.as_str()),
-                            nonce.as_str(),
-                            url,
-                        )?;
+                        let body = jose(&self.keypair, None, Some(&self.kid), &nonce, url)?;
                         LogLevel::Info.log(|| println!("{}", "Calling authorization endpoint."));
                         let response = Self::jose_request(client, url, &body).await?;
                         if response.status().is_success() {
@@ -368,13 +347,7 @@ impl Account {
         LogLevel::Debug.log(|| println!("{}", "Requesting new nonce."));
         let nonce = Self::new_nonce(client, directory).await?;
         let payload = json!({ "csr": base64::encode_config(csr, URL_SAFE_NO_PAD) });
-        let body = jose(
-            &self.keypair,
-            Some(payload),
-            Some(self.kid.as_str()),
-            nonce.as_str(),
-            url,
-        )?;
+        let body = jose(&self.keypair, Some(payload), Some(&self.kid), &nonce, url)?;
         LogLevel::Info.log(|| println!("{}", "Calling finalize endpoint."));
         let response = Self::jose_request(client, url, &body).await?;
         if response.status().is_success() {
@@ -390,7 +363,7 @@ impl Account {
                         &cert.serialize_private_key_pem(),
                         "\n",
                         &self
-                            .download_certificate(client, directory, certificate.as_str())
+                            .download_certificate(client, directory, &certificate)
                             .await?,
                     ]
                     .concat()
@@ -420,13 +393,7 @@ impl Account {
     ) -> Result<String> {
         LogLevel::Info.log(|| println!("{}", "Downloading certificate."));
         let nonce = Self::new_nonce(client, directory).await?;
-        let body = jose(
-            &self.keypair,
-            None,
-            Some(self.kid.as_str()),
-            nonce.as_str(),
-            url,
-        )?;
+        let body = jose(&self.keypair, None, Some(&self.kid), &nonce, url)?;
         LogLevel::Info.log(|| println!("{}", "Calling download endpoint."));
         let response = Self::jose_request(client, url, &body).await?;
         if response.status().is_success() {

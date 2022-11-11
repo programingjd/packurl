@@ -53,7 +53,7 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
                     b"GET " => {
                         if let Ok(path) = from_utf8(&bytes[4..pos]) {
                             let path = path.replace(CDN_ROOT.as_str(), "");
-                            match FILES.get(path.as_str()) {
+                            match FILES.get(&path) {
                                 None => {
                                     let _ = stream.write_all(NOT_FOUND_RESPONSE).await;
                                     return Ok(());
@@ -61,7 +61,7 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
                                 Some(entry) => {
                                     let not_modified =
                                         if let Some(etag) = get_if_none_match(&bytes[pos + 2..]) {
-                                            entry.etag.as_str() == etag
+                                            &entry.etag == etag
                                         } else {
                                             false
                                         };
