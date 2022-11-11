@@ -39,10 +39,10 @@ async fn main() -> Result<()> {
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
 
     println!("{}", "Listening on:".green());
-    println!("https://{}", APEX.blue().underline());
-    println!("https://{}", WWW.blue().underline());
-    println!("https://{}", CDN.blue().underline());
-    println!("https://{}", LOCALHOST.blue().underline());
+    println!("{}", format!("https://{}", APEX).cyan().underline());
+    println!("{}", format!("https://{}", WWW).cyan().underline());
+    println!("{}", format!("https://{}", CDN).cyan().underline());
+    println!("{}", format!("https://{}", LOCALHOST).blue().underline());
 
     loop {
         match listener.accept().await {

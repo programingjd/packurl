@@ -280,11 +280,11 @@ async fn walk(path: &Path) -> Result<()> {
                             if insert {
                                 if update {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Updating {}.", parent.yellow()))
+                                        println!("{}", format!("Updating {}.", key.yellow()))
                                     });
                                 } else {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Adding   {}.", parent.green()))
+                                        println!("{}", format!("Adding   {}.", key.green()))
                                     });
                                 }
                                 let _ = FILES.insert(
