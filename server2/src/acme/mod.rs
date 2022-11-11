@@ -1,13 +1,15 @@
-use crate::cache::{
-    backup_account_keys, backup_account_kid, get_certificate, restore_account_keys,
-    restore_account_kid, set_certificate, set_challenge_key,
+use crate::acme::cache::{
+    backup_account_keys, backup_account_kid, restore_account_keys, restore_account_kid,
+    set_certificate, set_challenge_key,
 };
+use crate::acme::jose::{authorization_hash, jose};
 use crate::domains::ACME_DOMAINS;
-use crate::jose::{authorization_hash, jose};
 use crate::log::LOG_LEVEL;
 use crate::LogLevel;
 use base64::URL_SAFE_NO_PAD;
+pub use cache::{get_certificate, get_challenge_key};
 use colored::Colorize;
+pub use handler::handle_acme_request;
 use rcgen::{
     Certificate, CertificateParams, CustomExtension, DistinguishedName, PKCS_ECDSA_P256_SHA256,
 };
@@ -20,8 +22,13 @@ use rustls::PrivateKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::{Error, ErrorKind, Result};
-use tokio::time::{sleep, Duration};
+use tokio::time::{interval, sleep, Duration};
 
+mod cache;
+mod handler;
+mod jose;
+
+// const DIRECTORY_URL: &'static str = "https://acme-v02.api.letsencrypt.org/directory";
 const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 const CONTACT: &'static str = "mailto:programingjd@gmail.com";
 
@@ -64,7 +71,26 @@ impl Account {
         Ok(Account { keypair, kid })
     }
 
-    pub async fn auto_renew(&self) -> Result<()> {
+    pub fn auto_renew_certificate_every(self, duration: Duration) {
+        tokio::spawn(async move {
+            let mut interval = interval(duration);
+            loop {
+                match self.auto_renew().await {
+                    Ok(_) => {
+                        LogLevel::Info
+                            .log(|| println!("{}", "Successfully renewed certificate.".green()));
+                    }
+                    Err(err) => LogLevel::Warning.log(|| {
+                        println!("{}", "Failed to renew certificate.".red());
+                        println!("{:?}", err);
+                    }),
+                }
+                interval.tick().await;
+            }
+        });
+    }
+
+    async fn auto_renew(&self) -> Result<()> {
         LogLevel::Info.log(|| println!("{}", "Creating new ACME order."));
         let client = Client::new();
         LogLevel::Debug.log(|| println!("{}", "Getting ACME directory."));

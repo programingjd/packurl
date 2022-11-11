@@ -1,4 +1,4 @@
-use crate::cache::{get_certificate, get_challenge_key};
+use crate::acme::{get_certificate, get_challenge_key};
 use crate::domains::{ACME_DOMAINS, SELF_SIGNED_DOMAINS};
 use crate::tls::ALPN_ACME_TLS;
 use crate::LogLevel;

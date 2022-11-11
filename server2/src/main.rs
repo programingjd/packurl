@@ -1,17 +1,17 @@
 mod acme;
-mod cache;
+mod apex;
+mod cdn;
 mod domains;
-mod handlers;
-mod jose;
+mod local;
 mod log;
-mod resolver;
-mod response;
 mod tls;
-use crate::response::OK_RESPONSE;
+use crate::acme::handle_acme_request;
+use crate::apex::handle_apex_request;
+use crate::cdn::handle_cdn_request;
+use crate::local::handle_local_request;
 use acme::Account;
 use colored::Colorize;
 use domains::{APEX, CDN, LOCALHOST, LOCALHOST_IPV4, LOCALHOST_IPV6, WWW};
-use handlers::{handle_apex_request, handle_cdn_request, handle_localhost_request};
 use log::LogLevel;
 use rustls::server::Acceptor;
 use std::io::Result;
@@ -21,7 +21,6 @@ use std::time::Duration;
 use tls::{config, ALPN_ACME_TLS};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
-use tokio::time::interval;
 use tokio_rustls::LazyConfigAcceptor;
 
 const PORT: u16 = 443;
@@ -29,25 +28,11 @@ const PORT: u16 = 443;
 #[tokio::main]
 async fn main() -> Result<()> {
     LogLevel::init();
-    let acme_account = Account::init().await?;
-    tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(86_400)); // 1 day
-        loop {
-            match acme_account.auto_renew().await {
-                Ok(_) => {
-                    LogLevel::Info
-                        .log(|| println!("{}", "Successfully renewed certificate.".green()));
-                }
-                Err(err) => LogLevel::Warning.log(|| {
-                    println!("{}", "Failed to renew certificate.".red());
-                    println!("{:?}", err);
-                }),
-            }
-            interval.tick().await;
-        }
-    });
+    Account::init()
+        .await?
+        .auto_renew_certificate_every(Duration::from_secs(86_400 /* 1 day */));
 
-    let config = config()?;
+    let tls_config = config()?;
 
     LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server."));
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
@@ -68,7 +53,7 @@ async fn main() -> Result<()> {
                     );
                 });
                 let acceptor = LazyConfigAcceptor::new(Acceptor::default(), tcp);
-                let config = config.clone();
+                let config = tls_config.clone();
                 let future = async move {
                     match acceptor.await {
                         Ok(start_handshake) => {
@@ -109,7 +94,7 @@ async fn main() -> Result<()> {
                                             .await
                                         {
                                             Ok(mut stream) => {
-                                                let _ = stream.write_all(OK_RESPONSE).await;
+                                                handle_acme_request(&mut stream).await;
                                                 let _ = stream.shutdown().await;
                                             }
                                             Err(err) => {
@@ -124,7 +109,7 @@ async fn main() -> Result<()> {
                                             Ok(mut stream) => {
                                                 match server_name.as_str() {
                                                     LOCALHOST | LOCALHOST_IPV4 | LOCALHOST_IPV6 => {
-                                                        handle_localhost_request(&mut stream).await;
+                                                        handle_local_request(&mut stream).await;
                                                     }
                                                     CDN => {
                                                         handle_cdn_request(&mut stream).await;

@@ -1,8 +1,10 @@
-use crate::resolver::CertResolver;
+use resolver::CertResolver;
 use rustls::version::TLS13;
 use rustls::ServerConfig;
 use std::io::{Error, ErrorKind, Result};
 use std::sync::Arc;
+
+mod resolver;
 
 pub const ALPN_HTTP1: &'static [u8] = b"http/1.1";
 pub const ALPN_ACME_TLS: &'static [u8] = b"acme-tls/1";
