@@ -4,6 +4,7 @@ use async_recursion::async_recursion;
 use colored::Colorize;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
+use normalize_path::NormalizePath;
 use std::io::{Error, ErrorKind, Result};
 use std::path::Path;
 use std::sync::Arc;
@@ -223,7 +224,7 @@ async fn walk(path: &Path) -> Result<()> {
     }
     if stat.is_file() {
         if let Ok(relative_path) = path.strip_prefix(ROOT) {
-            let uri_path = Path::new(PREFIX).join(relative_path);
+            let uri_path = Path::new(PREFIX).join(relative_path).normalize();
             if let Some(parent) = uri_path
                 .parent()
                 .and_then(|it| it.to_str())

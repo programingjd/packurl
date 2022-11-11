@@ -44,6 +44,9 @@ default-features = false
 [dependencies.brotli]
 version = "3.3.4"
 
+[dependencies.normalize-path]
+version = "0.2.0"
+
 [dependencies.lazy_static]
 version = "1.4.0"
 
