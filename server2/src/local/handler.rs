@@ -1,4 +1,4 @@
-use crate::cdn::update;
+use crate::cdn::Cache;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio_rustls::server::TlsStream;
@@ -22,7 +22,7 @@ pub async fn handle_local_request(stream: &mut TlsStream<TcpStream>) {
     if stream.read_exact(&mut buf).await.is_ok() {
         match &buf {
             b"GET /update HTTP/1.1\r\n" => {
-                if let Err(err) = update().await {
+                if let Err(err) = Cache::update().await {
                     let trace = format!("{:?}", err);
                     let body = trace.as_bytes();
                     let text = format!(

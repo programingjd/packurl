@@ -7,7 +7,7 @@ mod log;
 mod tls;
 use crate::acme::handle_acme_request;
 use crate::apex::handle_apex_request;
-use crate::cdn::handle_cdn_request;
+use crate::cdn::{handle_cdn_request, Cache};
 use crate::local::handle_local_request;
 use acme::Account;
 use colored::Colorize;
@@ -28,6 +28,7 @@ const PORT: u16 = 443;
 #[tokio::main]
 async fn main() -> Result<()> {
     LogLevel::init();
+    Cache::init();
     Account::init()
         .await?
         .auto_renew_certificate_every(Duration::from_secs(86_400 /* 1 day */));

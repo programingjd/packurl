@@ -20,51 +20,72 @@ lazy_static! {
     static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-pub async fn update() -> Result<()> {
-    let lock = match LOCK.try_lock() {
-        Ok(lock) => lock,
-        Err(_) => {
-            LogLevel::Info
-                .log(|| println!("{}", "Waiting for previous update to finish.".yellow()));
-            LOCK.lock().await
-        }
-    };
-    LogLevel::Info.log(|| println!("{}", "Updating file cache.".purple()));
-    let path = Path::new(ROOT);
-    for entry in FILES.iter() {
-        match metadata(path.join(entry.key())).await {
-            Ok(stat) => {
-                if stat.is_dir() {
-                    match metadata(path.join("index.html")).await {
-                        Ok(stat) => {
-                            if !stat.is_file() {
+pub struct Cache {}
+
+impl Cache {
+    pub fn init() {
+        tokio::spawn(async move {
+            match Self::update().await {
+                Ok(_) => {
+                    LogLevel::Info
+                        .log(|| println!("{}", "Successfully initialized file cache.".green()));
+                }
+                Err(err) => LogLevel::Warning.log(|| {
+                    println!("{}", "Failed to initialize file cache.".red());
+                    println!("{:?}", err);
+                }),
+            }
+        });
+    }
+
+    pub async fn update() -> Result<()> {
+        let lock = match LOCK.try_lock() {
+            Ok(lock) => lock,
+            Err(_) => {
+                LogLevel::Info
+                    .log(|| println!("{}", "Waiting for previous update to finish.".yellow()));
+                LOCK.lock().await
+            }
+        };
+        LogLevel::Info.log(|| println!("{}", "Updating file cache.".purple()));
+        let path = Path::new(ROOT);
+        for entry in FILES.iter() {
+            match metadata(path.join(entry.key())).await {
+                Ok(stat) => {
+                    if stat.is_dir() {
+                        match metadata(path.join("index.html")).await {
+                            Ok(stat) => {
+                                if !stat.is_file() {
+                                    LogLevel::Debug.log(|| {
+                                        println!("{}", format!("Removing {}.", entry.key().red()))
+                                    });
+                                    FILES.remove(entry.key());
+                                }
+                            }
+                            Err(_) => {
                                 LogLevel::Debug.log(|| {
                                     println!("{}", format!("Removing {}.", entry.key().red()))
                                 });
                                 FILES.remove(entry.key());
                             }
                         }
-                        Err(_) => {
-                            LogLevel::Debug
-                                .log(|| println!("{}", format!("Removing {}.", entry.key().red())));
-                            FILES.remove(entry.key());
-                        }
+                    } else if !stat.is_file() {
+                        LogLevel::Debug
+                            .log(|| println!("{}", format!("Removing {}.", entry.key().red())));
+                        FILES.remove(entry.key());
                     }
-                } else if !stat.is_file() {
+                }
+                Err(_) => {
                     LogLevel::Debug
                         .log(|| println!("{}", format!("Removing {}.", entry.key().red())));
                     FILES.remove(entry.key());
                 }
             }
-            Err(_) => {
-                LogLevel::Debug.log(|| println!("{}", format!("Removing {}.", entry.key().red())));
-                FILES.remove(entry.key());
-            }
         }
+        walk(path).await?;
+        drop(lock);
+        Ok(())
     }
-    walk(path).await?;
-    drop(lock);
-    Ok(())
 }
 
 pub struct FileEntry {

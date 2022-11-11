@@ -1,4 +1,4 @@
-pub use cache::update;
+pub use cache::Cache;
 pub use handler::handle_cdn_request;
 
 mod cache;
