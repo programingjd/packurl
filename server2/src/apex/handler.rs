@@ -13,6 +13,7 @@ const ROOT_REDIRECT_RESPONSE: &[u8] = b"HTTP/1.1 308 Permanent Redirect\r\n\
 Cache-Control: immutable\r\n\
 Connection: close\r\n\
 Location: https://cdn.packurl.net\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n";
 const CONTENT_TOO_LARGE_RESPONSE: &[u8] = const_str::concat_bytes!(
     b"HTTP/1.1 414 URI Too Long\r\n\
