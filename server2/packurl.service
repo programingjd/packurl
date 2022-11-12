@@ -1,0 +1,29 @@
+[Unit]
+Description=packurl server
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=exec
+StandardError=journal
+Environment=XDG_WWW_ROOT=/home/admin/www
+Environment=XDG_WWW_PREFIX=/
+PassEnvironment=XDG_WWW_ROOT XDG_WWW_PREFIX GITHUB_SECRET
+
+DynamicUser=true
+SupplementaryGroups=www-data
+ReadOnlyDirectories=/home/admin/www
+User=www-data
+Group=www-data
+ExecStart=/home/admin/server/target/release/packurl
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
