@@ -73,19 +73,12 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
             let bytes = bytes.as_slice();
             if bytes.len() > 15 {
                 if let Some(pos) = bytes.windows(2).position(|p| p == b"\r\n") {
-                    if pos > 12 {
-                        if let Ok(trailer) = from_utf8(&bytes[pos - 9..pos]) {
-                            LogLevel::Debug.log(|| println!("trailer: {}", trailer));
-                        }
-                    } else {
-                        LogLevel::Debug.log(|| println!("too short: {}", pos));
-                    }
                     if pos > 12 && &bytes[pos - 9..pos] == b" HTTP/1.1" {
                         match bytes.get(pos + 1) {
                             Some(b'\n') => match &bytes[0..4] {
                                 b"GET " => {
                                     if let Ok(path) = from_utf8(&bytes[4..pos - 9]) {
-                                        println!("path: \"{}\"", path.yellow());
+                                        LogLevel::Info.log(|| println!("{}", path));
                                         let path = path.replace(CDN_ROOT.as_str(), "");
                                         return match FILES.get(&path) {
                                             None => {
