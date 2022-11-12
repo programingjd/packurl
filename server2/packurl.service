@@ -8,7 +8,9 @@ Type=exec
 StandardError=journal
 Environment=XDG_WWW_ROOT=/home/admin/www
 Environment=XDG_WWW_PREFIX=/
-PassEnvironment=XDG_WWW_ROOT XDG_WWW_PREFIX GITHUB_SECRET
+Environment=XDG_ACME_ACCOUNT=programingjd@gmail.com
+Environment=XDG_ACME_DIRECTORY=https://acme-v02.api.letsencrypt.org/directory
+PassEnvironment=XDG_WWW_ROOT XDG_WWW_PREFIX XDG_ACME_ACCOUNT XDG_ACME_DIRECTORY GITHUB_SECRET
 
 DynamicUser=true
 SupplementaryGroups=www-data

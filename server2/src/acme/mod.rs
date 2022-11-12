@@ -10,6 +10,7 @@ use base64::URL_SAFE_NO_PAD;
 pub use cache::{get_certificate, get_challenge_key};
 use colored::Colorize;
 pub use handler::handle_acme_request;
+use lazy_static::lazy_static;
 use rcgen::{
     Certificate, CertificateParams, CustomExtension, DistinguishedName, PKCS_ECDSA_P256_SHA256,
 };
@@ -21,6 +22,7 @@ use rustls::sign::{any_ecdsa_type, CertifiedKey};
 use rustls::PrivateKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::env::var;
 use std::io::{Error, ErrorKind, Result};
 use tokio::time::{interval, sleep, Duration};
 
@@ -28,9 +30,12 @@ mod cache;
 mod handler;
 mod jose;
 
-const DIRECTORY_URL: &'static str = "https://acme-v02.api.letsencrypt.org/directory";
-// const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
-const CONTACT: &'static str = "mailto:programingjd@gmail.com";
+lazy_static! {
+    pub static ref DIRECTORY_URL: String = var("XDG_ACME_DIRECTORY")
+        .unwrap_or("https://acme-staging-v02.api.letsencrypt.org/directory".to_string());
+    pub static ref CONTACT: String =
+        var("XDG_ACME_ACCOUNT").unwrap_or("admin@packurl.net".to_string());
+}
 
 pub struct Account {
     keypair: EcdsaKeyPair,
@@ -95,7 +100,7 @@ impl Account {
         let client = Client::new();
         LogLevel::Debug.log(|| println!("{}", "Getting ACME directory"));
         let directory = client
-            .get(DIRECTORY_URL)
+            .get(DIRECTORY_URL.as_str())
             .send()
             .await
             .map_err(|err| Error::new(ErrorKind::Other, err))?
@@ -140,7 +145,7 @@ impl Account {
         let client = Client::new();
         LogLevel::Debug.log(|| println!("{}", "Getting ACME directory"));
         let directory = client
-            .get(DIRECTORY_URL)
+            .get(DIRECTORY_URL.as_str())
             .send()
             .await
             .map_err(|err| Error::new(ErrorKind::Other, err))?
@@ -152,7 +157,7 @@ impl Account {
         LogLevel::Debug.log(|| println!("{}", "Calling new account directory endpoint"));
         let payload = json!({
             "termsOfServiceAgreed": true,
-            "contact": vec![CONTACT]
+            "contact": vec![CONTACT.as_str()]
         });
         let body = jose(keypair, Some(payload), None, &nonce, &directory.new_account)?;
         let response = Self::jose_request(&client, &directory.new_account, &body).await?;
