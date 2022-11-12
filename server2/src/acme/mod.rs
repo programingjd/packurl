@@ -34,7 +34,7 @@ lazy_static! {
     pub static ref DIRECTORY_URL: String = var("XDG_ACME_DIRECTORY")
         .unwrap_or("https://acme-staging-v02.api.letsencrypt.org/directory".to_string());
     pub static ref CONTACT: String =
-        var("XDG_ACME_ACCOUNT").unwrap_or("admin@packurl.net".to_string());
+        var("XDG_ACME_CONTACT").unwrap_or("mailto:admin@packurl.net".to_string());
 }
 
 pub struct Account {
