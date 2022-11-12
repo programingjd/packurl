@@ -44,6 +44,13 @@ pub struct Account {
 
 impl Account {
     pub async fn init() -> Result<Self> {
+        LogLevel::Info.log(|| {
+            println!(
+                "Using ACME directory {} with account {}",
+                DIRECTORY_URL.yellow(),
+                CONTACT.yellow()
+            )
+        });
         let keypair = match restore_account_keys().await {
             Some(bytes) => {
                 LogLevel::Info.log(|| println!("{}", "Restoring ACME account keys"));

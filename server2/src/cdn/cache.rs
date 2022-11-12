@@ -25,6 +25,13 @@ pub struct Cache {}
 
 impl Cache {
     pub fn init() {
+        LogLevel::Info.log(|| {
+            println!(
+                "Using web root {} with prefix {}",
+                ROOT.yellow(),
+                PREFIX.yellow()
+            )
+        });
         tokio::spawn(async move {
             match Self::update().await {
                 Ok(_) => {
