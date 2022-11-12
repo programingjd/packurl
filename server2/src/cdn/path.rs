@@ -30,15 +30,12 @@ impl<'a> UriPath<'a> {
     }
     pub fn parent(&'a self) -> Option<Self> {
         let mut components = self.components.to_vec();
-        if components.len() > 1 {
-            let _ = components.pop();
+        components.pop().and_then(|_| {
             Some(UriPath {
                 prefix: self.prefix,
                 components,
             })
-        } else {
-            None
-        }
+        })
     }
     pub fn from(prefix: &'a str, root: &'_ str, path: &'_ Path) -> Option<Self> {
         path.to_str().and_then(|path| {
