@@ -42,10 +42,12 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
     let max: u64 = 4096;
     let mut bounded = stream.take(max);
     let mut bytes = Vec::new();
+    println!("{}", "cdn handler".yellow());
     if max as usize == bounded.read_to_end(&mut bytes).await? {
         let _ = stream.write_all(PAYLOAD_TOO_LARGE_RESPONSE).await;
         Ok(())
     } else {
+        println!("{}", "request length is ok".yellow());
         let bytes = bytes.as_slice();
         if let Some(pos) = bytes.iter().position(|p| *p == b'\r') {
             match bytes.get(pos + 1) {
