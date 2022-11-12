@@ -70,14 +70,16 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
             Ok(())
         }
         Some(bytes) => {
-            println!("{}", "request length is ok".yellow());
-            println!("{}", from_utf8(&bytes).unwrap());
+            if let Ok(req) = from_utf8(&bytes) {
+                LogLevel::Debug.log(|| println!("{}", req.dimmed()));
+            }
             let bytes = bytes.as_slice();
             if let Some(pos) = bytes.iter().position(|p| *p == b'\r') {
                 match bytes.get(pos + 1) {
                     Some(b'\n') => match &bytes[0..4] {
                         b"GET " => {
                             if let Ok(path) = from_utf8(&bytes[4..pos]) {
+                                println!("path: \"{}\"", path.yellow());
                                 let path = path.replace(CDN_ROOT.as_str(), "");
                                 match FILES.get(&path) {
                                     None => {
