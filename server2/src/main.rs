@@ -6,7 +6,7 @@ mod local;
 mod log;
 mod tls;
 use crate::acme::handle_acme_request;
-use crate::apex::handle_apex_request;
+use crate::apex::{handle_apex_request, handle_redirect_to_https};
 use crate::cdn::{handle_cdn_request, Cache};
 use crate::local::handle_local_request;
 use acme::Account;
@@ -23,7 +23,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio_rustls::LazyConfigAcceptor;
 
-const PORT: u16 = 443;
+const HTTPS_PORT: u16 = 443;
+const HTTP_PORT: u16 = 80;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -36,7 +37,32 @@ async fn main() -> Result<()> {
     let tls_config = config()?;
 
     LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server"));
-    let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
+    let https_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, HTTPS_PORT)).await?;
+    let http_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, HTTP_PORT)).await?;
+
+    println!("{}", "Listening on:".green());
+    println!("{}", format!("http://{}", APEX).cyan().underline());
+    println!("{}", format!("http://{}", WWW).cyan().underline());
+    tokio::spawn(async move {
+        loop {
+            match http_listener.accept().await {
+                Ok((mut stream, remote_addr)) => {
+                    LogLevel::Info.log(|| {
+                        println!(
+                            "Accepted TCP connection from {}",
+                            format!("{}", remote_addr.ip()).purple()
+                        );
+                    });
+                    handle_redirect_to_https(&mut stream).await;
+                    let _ = stream.shutdown().await;
+                }
+                Err(err) => LogLevel::Warning.log(|| {
+                    println!("{}", "Failed to accept TCP connection".red());
+                    println!("{:?}", err);
+                }),
+            }
+        }
+    });
 
     println!("{}", "Listening on:".green());
     println!("{}", format!("https://{}", APEX).cyan().underline());
@@ -45,7 +71,7 @@ async fn main() -> Result<()> {
     println!("{}", format!("https://{}", LOCALHOST).cyan().underline());
 
     loop {
-        match listener.accept().await {
+        match https_listener.accept().await {
             Ok((tcp, remote_addr)) => {
                 LogLevel::Info.log(|| {
                     println!(

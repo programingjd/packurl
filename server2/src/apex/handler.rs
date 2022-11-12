@@ -6,7 +6,8 @@ const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n
 Cache-Control: no-cache\r\n\
 Allow: GET\r\n\
 Connection: close\r\n\
-Content-Length: 0\r\n
+Content-Length: 0\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n";
 const ROOT_REDIRECT_RESPONSE: &[u8] = b"HTTP/1.1 308 Permanent Redirect\r\n\
 Cache-Control: immutable\r\n\
@@ -19,7 +20,8 @@ Cache-Control: no-store\r\n\
 Connection: close\r\n\
 Content-Encoding: br\r\n\
 Content-Type: text/html\r\n\
-Content-Length: 2724\r\n\
+Content-Length: 915\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n",
     include_bytes!("414.html.br")
 );
@@ -29,6 +31,7 @@ Connection: close\r\n\
 Content-Type: application/javascript\r\n\
 Content-Length: 39\r\n\
 Service-Worker-Allowed: /\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n\
 import 'https://cdn.packurl.net/sw.mjs'\
 \n";
@@ -38,7 +41,8 @@ Cache-Control: no-cache\r\n\
 Connection: close\r\n\
 Content-Encoding: br\r\n\
 Content-Type: application/manifest+json\r\n\
-Content-Length: 862\r\n\
+Content-Length: 302\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n\
 ",
     include_bytes!("pwa.json.br")
@@ -49,11 +53,22 @@ Cache-Control: immutable\r\n\
 Connection: close\r\n\
 Content-Encoding: br\r\n\
 Content-Type: image/x-icon\r\n\
-Content-Length: 14846\r\n\
+Content-Length: 443\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n\
 ",
     include_bytes!("fav.ico.br")
 );
+const HTTPS_REDIRECT_RESPONSE: &[u8] = b"HTTP/1.1 301 Moved Permanently\r\n\
+Location: https://packurl.net\r\n
+Connection: close\r\n\
+Content-Length: 0\r\n\
+\r\n\
+";
+
+pub async fn handle_redirect_to_https(stream: &mut TcpStream) {
+    let _ = stream.write_all(HTTPS_REDIRECT_RESPONSE).await;
+}
 
 pub async fn handle_apex_request(stream: &mut TlsStream<TcpStream>) {
     let mut buf = [0; 16];
