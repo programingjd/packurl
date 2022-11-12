@@ -162,9 +162,10 @@ impl Account {
         LogLevel::Debug.log(|| println!("{}", "Requesting new nonce"));
         let nonce = Self::new_nonce(&client, &directory).await?;
         LogLevel::Debug.log(|| println!("{}", "Calling new account directory endpoint"));
+        let contact = vec![CONTACT.as_str()];
         let payload = json!({
             "termsOfServiceAgreed": true,
-            "contact": vec![CONTACT.as_str()]
+            "contact": contact
         });
         let body = jose(keypair, Some(payload), None, &nonce, &directory.new_account)?;
         let response = Self::jose_request(&client, &directory.new_account, &body).await?;
