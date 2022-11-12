@@ -23,9 +23,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio_rustls::LazyConfigAcceptor;
 
-const HTTPS_PORT: u16 = 443;
-const HTTP_PORT: u16 = 80;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     LogLevel::init();
@@ -37,8 +34,8 @@ async fn main() -> Result<()> {
     let tls_config = config()?;
 
     LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server"));
-    let https_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, HTTPS_PORT)).await?;
-    let http_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, HTTP_PORT)).await?;
+    let https_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, 443)).await?;
+    let http_listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, 80)).await?;
 
     println!("{}", "Listening on:".green());
     println!("{}", format!("http://{}", APEX).cyan().underline());
