@@ -28,8 +28,8 @@ mod cache;
 mod handler;
 mod jose;
 
-// const DIRECTORY_URL: &'static str = "https://acme-v02.api.letsencrypt.org/directory";
-const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
+const DIRECTORY_URL: &'static str = "https://acme-v02.api.letsencrypt.org/directory";
+// const DIRECTORY_URL: &'static str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 const CONTACT: &'static str = "mailto:programingjd@gmail.com";
 
 pub struct Account {
