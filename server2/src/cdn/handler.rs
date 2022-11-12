@@ -71,6 +71,7 @@ async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
         }
         Some(bytes) => {
             println!("{}", "request length is ok".yellow());
+            println!("{}", from_utf8(&bytes).unwrap());
             let bytes = bytes.as_slice();
             if let Some(pos) = bytes.iter().position(|p| *p == b'\r') {
                 match bytes.get(pos + 1) {
