@@ -186,7 +186,7 @@ ETag: {}\r\n\
 Content-Type: {}\r\n\
 Content-Length: {}\r\n\
 \r\n",
-                    compressed, cache_control, etag, content_type, content_length
+                    cache_control, compressed, etag, content_type, content_length
                 )
                 .into_bytes(),
                 data,
