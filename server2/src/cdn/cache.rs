@@ -52,36 +52,33 @@ impl Cache {
         let path = Path::new(ROOT);
         for entry in FILES.iter() {
             // TODO remove prefix
-
-            match metadata(path.join(entry.key())).await {
+            let key = entry.key();
+            println!("path: {:?}", path.join(&key[PREFIX.len()..]));
+            match metadata(path.join(&key[PREFIX.len()..])).await {
                 Ok(stat) => {
                     if stat.is_dir() {
                         match metadata(path.join("index.html")).await {
                             Ok(stat) => {
                                 if !stat.is_file() {
-                                    LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Removing {}", entry.key().red()))
-                                    });
-                                    FILES.remove(entry.key());
+                                    LogLevel::Debug
+                                        .log(|| println!("{}", format!("Removing {}", key.red())));
+                                    FILES.remove(key);
                                 }
                             }
                             Err(_) => {
-                                LogLevel::Debug.log(|| {
-                                    println!("{}", format!("Removing {}", entry.key().red()))
-                                });
-                                FILES.remove(entry.key());
+                                LogLevel::Debug
+                                    .log(|| println!("{}", format!("Removing {}", key.red())));
+                                FILES.remove(key);
                             }
                         }
                     } else if !stat.is_file() {
-                        LogLevel::Debug
-                            .log(|| println!("{}", format!("Removing {}", entry.key().red())));
-                        FILES.remove(entry.key());
+                        LogLevel::Debug.log(|| println!("{}", format!("Removing {}", key.red())));
+                        FILES.remove(key);
                     }
                 }
                 Err(_) => {
-                    LogLevel::Debug
-                        .log(|| println!("{}", format!("Removing {}", entry.key().red())));
-                    FILES.remove(entry.key());
+                    LogLevel::Debug.log(|| println!("{}", format!("Removing {}", key.red())));
+                    FILES.remove(key);
                 }
             }
         }
