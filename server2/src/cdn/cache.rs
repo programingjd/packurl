@@ -97,7 +97,7 @@ pub struct FileEntry {
     pub not_modified: Vec<u8>,
 }
 
-async fn etag_and_size(path: &Path) -> Result<(String, u64)> {
+async fn etag(path: &Path) -> Result<String> {
     let meta = metadata(path).await?;
     let content_length = meta.len();
     let last_modified = meta
@@ -105,10 +105,7 @@ async fn etag_and_size(path: &Path) -> Result<(String, u64)> {
         .duration_since(UNIX_EPOCH)
         .map_err(|err| Error::new(ErrorKind::InvalidData, err))?
         .as_secs();
-    Ok((
-        format!("{:#x}{:#x}", content_length, last_modified),
-        meta.len(),
-    ))
+    Ok(format!("{:#x}{:#x}", content_length, last_modified))
 }
 
 fn cache_control_and_content_type(filename: &String) -> Option<(&str, &str)> {
@@ -235,7 +232,7 @@ async fn walk(path: &Path) -> Result<()> {
                     .and_then(|it| it.to_str().map(|it| it.to_lowercase()))
                 {
                     if filename == "index.html" {
-                        if let Ok((etag, content_length)) = etag_and_size(path).await {
+                        if let Ok(etag) = etag(path).await {
                             let key = parent.to_string();
                             let stored = FILES.get(&key);
                             let update = stored.is_some();
@@ -264,7 +261,7 @@ async fn walk(path: &Path) -> Result<()> {
                     } else if let Some((cache_control, content_type)) =
                         cache_control_and_content_type(&filename)
                     {
-                        if let Ok((etag, content_length)) = etag_and_size(path).await {
+                        if let Ok(etag) = etag(path).await {
                             let key = parent.join(&filename).to_string();
                             let stored = FILES.get(&key);
                             let update = stored.is_some();
