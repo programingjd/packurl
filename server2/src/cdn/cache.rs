@@ -230,7 +230,7 @@ async fn walk(path: &Path) -> Result<()> {
                             let stored = FILES.get(&key);
                             let update = stored.is_some();
                             let insert = if let Some(stored) = stored {
-                                stored.etag == etag
+                                stored.etag != etag
                             } else {
                                 true
                             };
@@ -259,7 +259,7 @@ async fn walk(path: &Path) -> Result<()> {
                             let stored = FILES.get(&key);
                             let update = stored.is_some();
                             let insert = if let Some(stored) = stored {
-                                stored.etag == etag
+                                stored.etag != etag
                             } else {
                                 true
                             };
