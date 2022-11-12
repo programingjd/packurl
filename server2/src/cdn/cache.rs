@@ -50,8 +50,8 @@ impl Cache {
         };
         LogLevel::Info.log(|| println!("{}", "Updating file cache".purple()));
         let path = Path::new(ROOT);
+        let mut removed = Vec::new();
         for entry in FILES.iter() {
-            // TODO remove prefix
             let key = entry.key();
             println!("path: {:?}", path.join(&key[PREFIX.len()..]));
             match metadata(path.join(&key[PREFIX.len()..])).await {
@@ -60,28 +60,24 @@ impl Cache {
                         match metadata(path.join("index.html")).await {
                             Ok(stat) => {
                                 if !stat.is_file() {
-                                    LogLevel::Debug
-                                        .log(|| println!("{}", format!("Removing {}", key.red())));
-                                    FILES.remove(key);
+                                    removed.push(key.to_string());
                                 }
                             }
                             Err(_) => {
-                                LogLevel::Debug
-                                    .log(|| println!("{}", format!("Removing {}", key.red())));
-                                FILES.remove(key);
+                                removed.push(key.to_string());
                             }
                         }
                     } else if !stat.is_file() {
-                        LogLevel::Debug.log(|| println!("{}", format!("Removing {}", key.red())));
-                        FILES.remove(key);
+                        removed.push(key.to_string());
                     }
                 }
-                Err(_) => {
-                    LogLevel::Debug.log(|| println!("{}", format!("Removing {}", key.red())));
-                    FILES.remove(key);
-                }
+                Err(_) => removed.push(key.to_string()),
             }
         }
+        removed.into_iter().for_each(|it| {
+            LogLevel::Debug.log(|| println!("{}", format!("Removing {}", it.red())));
+            let _ = FILES.remove(&it);
+        });
         walk(path).await?;
         drop(lock);
         Ok(())
