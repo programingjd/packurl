@@ -29,6 +29,8 @@ Connection: close\r\n\
 Content-Length: 0\r\n
 \r\n";
 
+const MAX_REQUEST_SIZE: usize = 4096;
+
 pub async fn handle_cdn_request(stream: &mut TlsStream<TcpStream>) {
     if let Err(err) = handle_file_request(stream).await {
         LogLevel::Warning.log(|| {
@@ -38,57 +40,80 @@ pub async fn handle_cdn_request(stream: &mut TlsStream<TcpStream>) {
     }
 }
 
+async fn read_request(stream: &mut TlsStream<TcpStream>) -> Result<Option<Vec<u8>>> {
+    let mut len: usize = 0;
+    let mut bounded = stream.take(MAX_REQUEST_SIZE as u64);
+    loop {
+        let mut buf: [u8; 1600] = [0u8; 1600];
+        let n = bounded.read(&mut buf[len..]).await?;
+        let start = if len > 2 { len - 2 } else { len };
+        len += n;
+        let scan = &buf[start..len];
+        if scan.len() > 3 {
+            if let Some(pos) = scan
+                .windows(4)
+                .position(|it| it[0] == b'\r' && it[1] == b'\n' && it[2] == b'\r' && it[3] == b'\n')
+            {
+                return Ok(Some(buf[..pos + start].to_vec()));
+            }
+        }
+        if scan.len() == MAX_REQUEST_SIZE {
+            return Ok(None);
+        }
+    }
+}
+
 async fn handle_file_request(stream: &mut TlsStream<TcpStream>) -> Result<()> {
-    let max: u64 = 4096;
-    let mut bounded = stream.take(max);
-    let mut bytes = Vec::new();
-    println!("{}", "cdn handler".yellow());
-    if max as usize == bounded.read_to_end(&mut bytes).await? {
-        let _ = stream.write_all(PAYLOAD_TOO_LARGE_RESPONSE).await;
-        Ok(())
-    } else {
-        println!("{}", "request length is ok".yellow());
-        let bytes = bytes.as_slice();
-        if let Some(pos) = bytes.iter().position(|p| *p == b'\r') {
-            match bytes.get(pos + 1) {
-                Some(b'\n') => match &bytes[0..4] {
-                    b"GET " => {
-                        if let Ok(path) = from_utf8(&bytes[4..pos]) {
-                            let path = path.replace(CDN_ROOT.as_str(), "");
-                            match FILES.get(&path) {
-                                None => {
-                                    let _ = stream.write_all(NOT_FOUND_RESPONSE).await;
-                                    return Ok(());
-                                }
-                                Some(entry) => {
-                                    let not_modified =
-                                        if let Some(etag) = get_if_none_match(&bytes[pos + 2..]) {
+    match read_request(stream).await? {
+        None => {
+            let _ = stream.write_all(PAYLOAD_TOO_LARGE_RESPONSE).await;
+            Ok(())
+        }
+        Some(bytes) => {
+            println!("{}", "request length is ok".yellow());
+            let bytes = bytes.as_slice();
+            if let Some(pos) = bytes.iter().position(|p| *p == b'\r') {
+                match bytes.get(pos + 1) {
+                    Some(b'\n') => match &bytes[0..4] {
+                        b"GET " => {
+                            if let Ok(path) = from_utf8(&bytes[4..pos]) {
+                                let path = path.replace(CDN_ROOT.as_str(), "");
+                                match FILES.get(&path) {
+                                    None => {
+                                        let _ = stream.write_all(NOT_FOUND_RESPONSE).await;
+                                        return Ok(());
+                                    }
+                                    Some(entry) => {
+                                        let not_modified = if let Some(etag) =
+                                            get_if_none_match(&bytes[pos + 2..])
+                                        {
                                             &entry.etag == etag
                                         } else {
                                             false
                                         };
-                                    let _ = stream
-                                        .write_all(if not_modified {
-                                            &entry.not_modified
-                                        } else {
-                                            &entry.ok
-                                        })
-                                        .await;
-                                    return Ok(());
+                                        let _ = stream
+                                            .write_all(if not_modified {
+                                                &entry.not_modified
+                                            } else {
+                                                &entry.ok
+                                            })
+                                            .await;
+                                        return Ok(());
+                                    }
                                 }
                             }
                         }
-                    }
-                    _ => {
-                        let _ = stream.write_all(METHOD_NOT_ALLOWED_RESPONSE).await;
-                        return Ok(());
-                    }
-                },
-                _ => {}
+                        _ => {
+                            let _ = stream.write_all(METHOD_NOT_ALLOWED_RESPONSE).await;
+                            return Ok(());
+                        }
+                    },
+                    _ => {}
+                }
             }
+            let _ = stream.write_all(BAD_REQUEST_RESPONSE).await;
+            Ok(())
         }
-        let _ = stream.write_all(BAD_REQUEST_RESPONSE).await;
-        Ok(())
     }
 }
 
