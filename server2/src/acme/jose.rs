@@ -43,7 +43,7 @@ pub fn jose(
     let message = format!("{}.{}", protected, payload);
     let signature = keypair
         .sign(&SystemRandom::new(), message.as_bytes())
-        .map_err(|_| Error::new(ErrorKind::Other, "Failed to sign message."))?;
+        .map_err(|_| Error::new(ErrorKind::Other, "Failed to sign message"))?;
     let signature = base64::encode_config(signature.as_ref(), URL_SAFE_NO_PAD);
     let body = Body {
         protected,

@@ -23,17 +23,17 @@ pub async fn restore_account_kid() -> Option<Vec<u8>> {
 pub async fn backup_account_keys(bytes: &[u8]) -> Result<()> {
     *ACCOUNT_KEYS
         .write()
-        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account keys."))? =
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account keys"))? =
         Some(bytes.to_vec());
     *ACCOUNT_KID
         .write()
-        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to reset account kid."))? = None;
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to reset account kid"))? = None;
     Ok(())
 }
 pub async fn backup_account_kid(bytes: &[u8]) -> Result<()> {
     *ACCOUNT_KID
         .write()
-        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account kid."))? =
+        .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write account kid"))? =
         Some(bytes.to_vec());
     Ok(())
 }
@@ -51,7 +51,7 @@ pub fn set_challenge_key(domain: &str, key: CertifiedKey) -> Result<()> {
     } else {
         Err(Error::new(
             ErrorKind::Other,
-            "Failed to write challenge key.",
+            "Failed to write challenge key",
         ))
     }
 }
@@ -70,19 +70,19 @@ pub fn get_challenge_key(domain: &str) -> Option<CertifiedKey> {
 
 pub fn set_certificate(pem: &[u8]) -> Result<()> {
     let mut pems =
-        parse_many(&pem).map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse PEM."))?;
+        parse_many(&pem).map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse PEM"))?;
     if pems.len() < 2 {
-        Err(Error::new(ErrorKind::Other, "Incomplete PEM."))
+        Err(Error::new(ErrorKind::Other, "Incomplete PEM"))
     } else {
         let key = any_ecdsa_type(&PrivateKey(pems.remove(0).contents))
-            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse private key."))?;
+            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to parse private key"))?;
         let chain = pems
             .into_iter()
             .map(|pem| Certificate(pem.contents))
             .collect();
         *CERTIFICATE
             .write()
-            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write certificate chain."))? =
+            .map_err(|_err| Error::new(ErrorKind::Other, "Failed to write certificate chain"))? =
             Some((CertifiedKey::new(chain, key), Instant::now()));
         Ok(())
     }

@@ -21,7 +21,7 @@ pub struct CertResolver {
 
 impl CertResolver {
     pub fn try_new() -> Result<Self, Error> {
-        LogLevel::Info.log(|| println!("Creating self-signed certificates."));
+        LogLevel::Info.log(|| println!("Creating self-signed certificates"));
         let self_signed = generate_simple_self_signed(SELF_SIGNED_DOMAINS)
             .map_err(|err| Error::new(ErrorKind::Unsupported, err))?;
         let private_key = PrivateKey(self_signed.serialize_private_key_der());
@@ -46,18 +46,18 @@ impl CertResolver {
 impl CertResolver {
     fn update_certificate(&self) -> Option<Arc<CertifiedKey>> {
         if let Some((key, instant)) = get_certificate() {
-            LogLevel::Debug.log(|| println!("Certificate found."));
+            LogLevel::Debug.log(|| println!("Certificate found"));
             if let Some(mut lock) = self.acme.write().ok() {
                 let key = Arc::new(key);
                 let _ = lock.replace((key.clone(), instant));
-                LogLevel::Debug.log(|| println!("Certificate loaded."));
+                LogLevel::Debug.log(|| println!("Certificate loaded"));
                 Some(key)
             } else {
-                LogLevel::Debug.log(|| println!("Certificate could not be loaded."));
+                LogLevel::Debug.log(|| println!("Certificate could not be loaded"));
                 None
             }
         } else {
-            LogLevel::Debug.log(|| println!("Certificate not found."));
+            LogLevel::Debug.log(|| println!("Certificate not found"));
             None
         }
     }
@@ -73,12 +73,12 @@ impl ResolvesServerCert for CertResolver {
                     .is_some()
                 {
                     LogLevel::Debug
-                        .log(|| println!("Looking for unsigned certificate for {}.", sni.red()));
+                        .log(|| println!("Looking for unsigned certificate for {}", sni.purple()));
                     if let Some(key) = get_challenge_key(sni) {
-                        LogLevel::Debug.log(|| println!("Certificate found."));
+                        LogLevel::Debug.log(|| println!("Certificate found"));
                         Some(Arc::new(key))
                     } else {
-                        LogLevel::Debug.log(|| println!("Certificate not found."));
+                        LogLevel::Debug.log(|| println!("Certificate not found"));
                         None
                     }
                 } else {
@@ -89,7 +89,7 @@ impl ResolvesServerCert for CertResolver {
                             drop(inner);
                             if elapsed > MAX_DURATION {
                                 LogLevel::Debug.log(|| {
-                                    println!("Updating issued certificate for {}.", sni.red())
+                                    println!("Updating issued certificate for {}", sni.purple())
                                 });
                                 let _ = self.update_certificate();
                             }
@@ -97,7 +97,7 @@ impl ResolvesServerCert for CertResolver {
                         } else {
                             drop(inner);
                             LogLevel::Debug.log(|| {
-                                println!("Looking for issued certificate for {}.", sni.red())
+                                println!("Looking for issued certificate for {}", sni.purple())
                             });
                             self.update_certificate()
                         }

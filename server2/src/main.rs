@@ -35,21 +35,27 @@ async fn main() -> Result<()> {
 
     let tls_config = config()?;
 
-    LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server."));
+    LogLevel::Info.log(|| println!("{}", "Starting HTTP1.1 server"));
     let listener = TcpListener::bind((Ipv6Addr::UNSPECIFIED, PORT)).await?;
 
     println!("{}", "Listening on:".green());
     println!("{}", format!("https://{}", APEX).cyan().underline());
     println!("{}", format!("https://{}", WWW).cyan().underline());
     println!("{}", format!("https://{}", CDN).cyan().underline());
-    println!("{}", format!("https://{}", LOCALHOST).blue().underline());
+    println!("{}", format!("https://{}", LOCALHOST).cyan().underline());
 
     loop {
         match listener.accept().await {
             Ok((tcp, remote_addr)) => {
                 LogLevel::Info.log(|| {
                     println!(
-                        "Accepted TCP connection from {}.",
+                        "Accepted TCP connection from {}",
+                        format!("{}", remote_addr.ip()).purple()
+                    );
+                });
+                LogLevel::Debug.log(|| {
+                    println!(
+                        "Starting TLS handshake with {}",
                         format!("{}", remote_addr.ip()).purple()
                     );
                 });
@@ -58,19 +64,13 @@ async fn main() -> Result<()> {
                 let future = async move {
                     match acceptor.await {
                         Ok(start_handshake) => {
-                            LogLevel::Debug.log(|| {
-                                println!(
-                                    "Starting TLS handshake with {}.",
-                                    format!("{}", remote_addr.ip()).purple()
-                                );
-                            });
                             let client_hello = start_handshake.client_hello();
                             match client_hello.server_name() {
                                 Some(sni) => {
                                     LogLevel::Debug.log(|| {
                                         println!(
                                             "{}",
-                                            format!("TLS SNI extension: {}.", sni.purple())
+                                            format!("TLS SNI extension: {}", sni.purple())
                                         );
                                     });
                                     let server_name = sni.clone().to_string();
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
                                             println!(
                                                 "{}",
                                                 format!(
-                                                    "Responding to ACME Challenge for {}.",
+                                                    "Responding to ACME Challenge for {}",
                                                     server_name.purple()
                                                 )
                                             );
@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
                                             }
                                             Err(err) => {
                                                 LogLevel::Warning.log(|| {
-                                                    println!("{}", "TLS handshake failed.".red());
+                                                    println!("{}", "TLS handshake failed".red());
                                                     println!("{:?}", err);
                                                 });
                                             }
@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
                                             }
                                             Err(err) => {
                                                 LogLevel::Warning.log(|| {
-                                                    println!("{}", "TLS handshake failed.".red());
+                                                    println!("{}", "TLS handshake failed".red());
                                                     println!("{:?}", err);
                                                 });
                                             }
@@ -133,13 +133,13 @@ async fn main() -> Result<()> {
                                 }
                                 None => {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", "TLS SNI extension is missing.".red())
+                                        println!("{}", "TLS SNI extension is missing".red())
                                     });
                                 }
                             }
                         }
                         Err(err) => LogLevel::Warning.log(|| {
-                            println!("{}", "Failed to accept TLS connection.".red());
+                            println!("{}", "Failed to accept TLS connection".red());
                             println!("{:?}", err);
                         }),
                     }
@@ -149,7 +149,7 @@ async fn main() -> Result<()> {
                 });
             }
             Err(err) => LogLevel::Warning.log(|| {
-                println!("{}", "Failed to accept TCP connection.".red());
+                println!("{}", "Failed to accept TCP connection".red());
                 println!("{:?}", err);
             }),
         }

@@ -29,10 +29,10 @@ impl Cache {
             match Self::update().await {
                 Ok(_) => {
                     LogLevel::Info
-                        .log(|| println!("{}", "Successfully initialized file cache.".green()));
+                        .log(|| println!("{}", "Successfully initialized file cache".green()));
                 }
                 Err(err) => LogLevel::Warning.log(|| {
-                    println!("{}", "Failed to initialize file cache.".red());
+                    println!("{}", "Failed to initialize file cache".red());
                     println!("{:?}", err);
                 }),
             }
@@ -44,11 +44,11 @@ impl Cache {
             Ok(lock) => lock,
             Err(_) => {
                 LogLevel::Info
-                    .log(|| println!("{}", "Waiting for previous update to finish.".yellow()));
+                    .log(|| println!("{}", "Waiting for previous update to finish".yellow()));
                 LOCK.lock().await
             }
         };
-        LogLevel::Info.log(|| println!("{}", "Updating file cache.".purple()));
+        LogLevel::Info.log(|| println!("{}", "Updating file cache".purple()));
         let path = Path::new(ROOT);
         for entry in FILES.iter() {
             match metadata(path.join(entry.key())).await {
@@ -58,27 +58,27 @@ impl Cache {
                             Ok(stat) => {
                                 if !stat.is_file() {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Removing {}.", entry.key().red()))
+                                        println!("{}", format!("Removing {}", entry.key().red()))
                                     });
                                     FILES.remove(entry.key());
                                 }
                             }
                             Err(_) => {
                                 LogLevel::Debug.log(|| {
-                                    println!("{}", format!("Removing {}.", entry.key().red()))
+                                    println!("{}", format!("Removing {}", entry.key().red()))
                                 });
                                 FILES.remove(entry.key());
                             }
                         }
                     } else if !stat.is_file() {
                         LogLevel::Debug
-                            .log(|| println!("{}", format!("Removing {}.", entry.key().red())));
+                            .log(|| println!("{}", format!("Removing {}", entry.key().red())));
                         FILES.remove(entry.key());
                     }
                 }
                 Err(_) => {
                     LogLevel::Debug
-                        .log(|| println!("{}", format!("Removing {}.", entry.key().red())));
+                        .log(|| println!("{}", format!("Removing {}", entry.key().red())));
                     FILES.remove(entry.key());
                 }
             }
@@ -242,11 +242,11 @@ async fn walk(path: &Path) -> Result<()> {
                             if insert {
                                 if update {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Updating {}.", key.yellow()))
+                                        println!("{}", format!("Updating {}", key.yellow()))
                                     });
                                 } else {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Adding   {}.", key.green()))
+                                        println!("{}", format!("Adding   {}", key.green()))
                                     });
                                 }
                                 let _ = FILES.insert(
@@ -277,11 +277,11 @@ async fn walk(path: &Path) -> Result<()> {
                             if insert {
                                 if update {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Updating {}.", key.yellow()))
+                                        println!("{}", format!("Updating {}", key.yellow()))
                                     });
                                 } else {
                                     LogLevel::Debug.log(|| {
-                                        println!("{}", format!("Adding   {}.", key.green()))
+                                        println!("{}", format!("Adding   {}", key.green()))
                                     });
                                 }
                                 let _ = FILES.insert(

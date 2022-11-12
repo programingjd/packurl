@@ -32,7 +32,7 @@ Content-Length: 0\r\n
 pub async fn handle_cdn_request(stream: &mut TlsStream<TcpStream>) {
     if let Err(err) = handle_file_request(stream).await {
         LogLevel::Warning.log(|| {
-            println!("{}", "Failed to accept TLS connection.".red());
+            println!("{}", "Failed to accept TLS connection".red());
             println!("{:?}", err);
         });
     }
