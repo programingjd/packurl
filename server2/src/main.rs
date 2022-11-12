@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
                 Ok((mut stream, remote_addr)) => {
                     LogLevel::Info.log(|| {
                         println!(
-                            "Accepted TCP connection from {}",
+                            "Accepted TCP connection from {} on port 80",
                             format!("{}", remote_addr.ip()).purple()
                         );
                     });
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
                     let _ = stream.shutdown().await;
                 }
                 Err(err) => LogLevel::Warning.log(|| {
-                    println!("{}", "Failed to accept TCP connection".red());
+                    println!("{}", "Failed to accept TCP connection on port 80".red());
                     println!("{:?}", err);
                 }),
             }
@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
             Ok((tcp, remote_addr)) => {
                 LogLevel::Info.log(|| {
                     println!(
-                        "Accepted TCP connection from {}",
+                        "Accepted TCP connection from {} on port 443",
                         format!("{}", remote_addr.ip()).purple()
                     );
                 });
@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
                 });
             }
             Err(err) => LogLevel::Warning.log(|| {
-                println!("{}", "Failed to accept TCP connection".red());
+                println!("{}", "Failed to accept TCP connection on port 443".red());
                 println!("{:?}", err);
             }),
         }
