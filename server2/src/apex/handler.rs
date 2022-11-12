@@ -21,6 +21,12 @@ Connection: close\r\n\
 Content-Encoding: br\r\n\
 Content-Type: text/html\r\n\
 Content-Length: 915\r\n\
+X-Content-Type-Options: nosniff\r\n\
+X-Frame-Options: DENY\r\n\
+X-XSS-Protection: 1; mode=block\r\n\
+Cross-Origin-Resource-Policy: same-origin\r\n\
+Cross-Origin-Embedder-Policy: require-corp\r\n\
+Cross-Security-Policy: default-src 'self' 'unsafe-inline'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\n\
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n",
     include_bytes!("414.html.br")
@@ -60,7 +66,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
     include_bytes!("fav.ico.br")
 );
 const HTTPS_REDIRECT_RESPONSE: &[u8] = b"HTTP/1.1 301 Moved Permanently\r\n\
-Location: https://packurl.net\r\n
+Location: https://packurl.net\r\n\
 Connection: close\r\n\
 Content-Length: 0\r\n\
 \r\n\

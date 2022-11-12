@@ -5,6 +5,7 @@ use async_recursion::async_recursion;
 use colored::Colorize;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
+use std::env::var;
 use std::io::{Error, ErrorKind, Result};
 use std::path::Path;
 use std::sync::Arc;
@@ -12,10 +13,9 @@ use std::time::UNIX_EPOCH;
 use tokio::fs::{metadata, read, read_dir};
 use tokio::sync::Mutex;
 
-const ROOT: &'static str = "/home/admin/www";
-const PREFIX: &'static str = "/";
-
 lazy_static! {
+    pub static ref ROOT: String = var("XDG_WWW_ROOT").unwrap_or("/var/www".to_string());
+    pub static ref PREFIX: String = var("XDG_WWW_PREFIX").unwrap_or("/".to_string());
     pub static ref FILES: DashMap<String, FileEntry> = DashMap::with_capacity(1024);
     pub static ref CDN_ROOT: String = format!("https://{}", CDN);
     static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
@@ -49,7 +49,7 @@ impl Cache {
             }
         };
         LogLevel::Info.log(|| println!("{}", "Updating file cache".purple()));
-        let path = Path::new(ROOT);
+        let path = Path::new(ROOT.as_str());
         let mut removed = Vec::new();
         for entry in FILES.iter() {
             let key = entry.key();
@@ -176,6 +176,15 @@ Connection: close\r\n\
 ETag: {}\r\n\
 Content-Type: {}\r\n\
 Content-Length: {}\r\n\
+X-Content-Type-Options: nosniff\r\n\
+X-Frame-Options: DENY\r\n\
+X-XSS-Protection: 1; mode=block\r\n\
+Cross-Origin-Resource-Policy: same-origin\r\n\
+Cross-Origin-Embedder-Policy: require-corp\r\n\
+Cross-Security-Policy: default-src 'self' 'unsafe-inline'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\n\
+Access-Control-Allow-Origin: https://packurl.net\r\n\
+Access-Control-Max-Age: 86400\r\n\
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
 \r\n",
                     cache_control,
                     compressed,
@@ -218,7 +227,7 @@ async fn walk(path: &Path) -> Result<()> {
         }
     }
     if stat.is_file() {
-        if let Some(uri_path) = UriPath::from(PREFIX, ROOT, path) {
+        if let Some(uri_path) = UriPath::from(PREFIX.as_str(), ROOT.as_str(), path) {
             if let Some(parent) = uri_path.parent() {
                 if let Some(filename) = path
                     .file_name()

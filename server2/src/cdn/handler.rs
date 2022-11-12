@@ -12,18 +12,18 @@ Cache-Control: no-cache\r\n\
 Connection: close\r\n\
 Content-Length: 0\r\n\
 \r\n";
-pub const PAYLOAD_TOO_LARGE_RESPONSE: &[u8] = b"HTTP/1.1 413 Payload Too Large\r\n\
+const PAYLOAD_TOO_LARGE_RESPONSE: &[u8] = b"HTTP/1.1 413 Payload Too Large\r\n\
 Cache-Control: no-cache\r\n\
 Connection: close\r\n\
 Content-Length: 0\r\n\
 \r\n";
-pub const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n\
+const METHOD_NOT_ALLOWED_RESPONSE: &[u8] = b"HTTP/1.1 405 Method Not Allowed\r\n\
 Cache-Control: no-cache\r\n\
-Allow: GET\r\n\
+Allow: GET, OPTIONS\r\n\
 Connection: close\r\n\
 Content-Length: 0\r\n
 \r\n";
-pub const BAD_REQUEST_RESPONSE: &[u8] = b"HTTP/1.1 400 Bad Request\r\n\
+const BAD_REQUEST_RESPONSE: &[u8] = b"HTTP/1.1 400 Bad Request\r\n\
 Cache-Control: no-cache\r\n\
 Connection: close\r\n\
 Content-Length: 0\r\n
