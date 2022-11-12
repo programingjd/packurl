@@ -51,6 +51,8 @@ impl Cache {
         LogLevel::Info.log(|| println!("{}", "Updating file cache".purple()));
         let path = Path::new(ROOT);
         for entry in FILES.iter() {
+            // TODO remove prefix
+
             match metadata(path.join(entry.key())).await {
                 Ok(stat) => {
                     if stat.is_dir() {
@@ -159,7 +161,6 @@ fn cache_control_and_content_type(filename: &String) -> Option<(&str, &str)> {
 async fn build_response(
     path: &Path,
     etag: String,
-    content_length: u64,
     cache_control: &str,
     content_type: &str,
 ) -> Result<FileEntry> {
@@ -186,7 +187,11 @@ ETag: {}\r\n\
 Content-Type: {}\r\n\
 Content-Length: {}\r\n\
 \r\n",
-                    cache_control, compressed, etag, content_type, content_length
+                    cache_control,
+                    compressed,
+                    etag,
+                    content_type,
+                    data.len()
                 )
                 .into_bytes(),
                 data,
@@ -251,14 +256,8 @@ async fn walk(path: &Path) -> Result<()> {
                                 }
                                 let _ = FILES.insert(
                                     key,
-                                    build_response(
-                                        path,
-                                        etag,
-                                        content_length,
-                                        "public,no-cache",
-                                        "text/html",
-                                    )
-                                    .await?,
+                                    build_response(path, etag, "public,no-cache", "text/html")
+                                        .await?,
                                 );
                             }
                         }
@@ -286,14 +285,7 @@ async fn walk(path: &Path) -> Result<()> {
                                 }
                                 let _ = FILES.insert(
                                     key,
-                                    build_response(
-                                        path,
-                                        etag,
-                                        content_length,
-                                        cache_control,
-                                        content_type,
-                                    )
-                                    .await?,
+                                    build_response(path, etag, cache_control, content_type).await?,
                                 );
                             }
                         }
