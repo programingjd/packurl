@@ -229,8 +229,12 @@ async fn walk(path: &Path) -> Result<()> {
     if stat.is_dir() {
         let mut iterator = read_dir(path).await?;
         while let Some(entry) = iterator.next_entry().await? {
-            let path = path.join(entry.file_name());
-            walk(path.as_path()).await?;
+            if let Some(file_name) = entry.file_name().to_str() {
+                if !file_name.starts_with('.') {
+                    let path = path.join(file_name);
+                    walk(path.as_path()).await?;
+                }
+            }
         }
     }
     if stat.is_file() {
