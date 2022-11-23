@@ -194,6 +194,7 @@ Cross-Security-Policy: default-src 'self' 'unsafe-inline'; worker-src 'self'; fr
 Access-Control-Allow-Origin: https://packurl.net\r\n\
 Access-Control-Max-Age: 86400\r\n\
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\r\n\
+Vary: Origin, Cookie\r\n
 \r\n",
                     cache_control,
                     compressed,
