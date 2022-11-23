@@ -23,13 +23,15 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio_rustls::LazyConfigAcceptor;
 
+const FIVE_DAYS: u64 = 86_400 * 5;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     LogLevel::init();
     Cache::init();
     Account::init()
         .await?
-        .auto_renew_certificate_every(Duration::from_secs(86_400 /* 1 day */));
+        .auto_renew_certificate_every(Duration::from_secs(FIVE_DAYS));
 
     let tls_config = config()?;
 
