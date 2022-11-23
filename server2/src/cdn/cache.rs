@@ -127,6 +127,8 @@ fn cache_control_and_content_type(filename: &String) -> Option<(&str, &str)> {
         Some(("public,max-age=31536000,immutable", "image/png"))
     } else if filename.ends_with(".webp") {
         Some(("public,max-age=31536000,immutable", "image/webp"))
+    } else if filename.ends_with(".ico") {
+        Some(("public,max-age=31536000,immutable", "image/x-icon"))
     } else if filename.ends_with(".woff2") {
         Some(("public,max-age=31536000,immutable", "font/woff2"))
     } else if filename.ends_with(".json") {
